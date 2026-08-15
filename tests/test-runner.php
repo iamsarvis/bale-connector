@@ -52,6 +52,7 @@ function add_settings_error( $setting, $code, $message, $type = 'error' ) {
     global $mock_settings_errors;
     $mock_settings_errors[] = array( 'setting' => $setting, 'code' => $code, 'message' => $message, 'type' => $type );
 }
+function settings_errors() {}
 function get_admin_page_title() { return 'Bale Connector'; }
 function settings_fields( $group ) {}
 function do_settings_sections( $page ) {}
