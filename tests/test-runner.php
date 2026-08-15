@@ -95,4 +95,27 @@ echo "[PASS] Bale_Admin sanitization verified.\n";
 assert( bale_connector_check_requirements() === true, 'Requirements check failed on valid environment' );
 echo "[PASS] Requirements check verified.\n";
 
+// 4. Test Lifecycle (Uninstall Simulation)
+$mock_options['bale_connector_bot_token_enc'] = 'test';
+$mock_options['bale_connector_keep_data_on_uninstall'] = '0';
+$mock_options['bale_connector_db_version'] = '1.0.0';
+
+class MockWPDB {
+    public $prefix = 'wp_';
+    public $queries = array();
+    public function query( $sql ) {
+        $this->queries[] = $sql;
+        return true;
+    }
+}
+$GLOBALS['wpdb'] = new MockWPDB();
+
+define( 'WP_UNINSTALL_PLUGIN', true );
+require dirname( __DIR__ ) . '/uninstall.php';
+
+assert( ! isset( $mock_options['bale_connector_bot_token_enc'] ), 'Token option not removed on uninstall' );
+assert( ! isset( $mock_options['bale_connector_keep_data_on_uninstall'] ), 'Keep data option not removed on uninstall' );
+assert( count( $GLOBALS['wpdb']->queries ) === 3, 'Not all 3 tables dropped on uninstall' );
+echo "[PASS] Uninstall cleanup lifecycle verified.\n";
+
 echo "ALL TESTS PASSED SUCCESSFULLY on PHP " . PHP_VERSION . "!\n";

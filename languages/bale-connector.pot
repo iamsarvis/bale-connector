@@ -1,0 +1,116 @@
+# Copyright (C) 2026 Sobhan
+# This file is distributed under the GPLv2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Bale Connector 1.0.0
+"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/bale-connector
+"
+"Last-Translator: Sobhan <iamsarvis@gmail.com>
+"
+"Language-Team: Persian
+"
+"MIME-Version: 1.0
+"
+"Content-Type: text/plain; charset=UTF-8
+"
+"Content-Transfer-Encoding: 8bit
+"
+"POT-Creation-Date: 2026-08-15T06:00:00+00:00
+"
+"PO-Revision-Date: 2026-08-15T06:00:00+00:00
+"
+"Language: en
+"
+"Plural-Forms: nplurals=2; plural=(n != 1);
+"
+
+#: bale-connector.php:65
+msgid "Bale Connector requires PHP %1+ (current: %2) and WordPress %3+ (current: %4). The plugin has been deactivated."
+msgstr ""
+
+#: includes/class-bale-installer.php:26
+msgid "Bale Connector requires PHP %1+ (current: %2) and WordPress %3+ (current: %4)."
+msgstr ""
+
+#: includes/class-bale-installer.php:32
+msgid "Plugin Activation Error"
+msgstr ""
+
+#: includes/class-bale-admin.php:27
+#: includes/class-bale-admin.php:28
+msgid "Bale Connector"
+msgstr ""
+
+#: includes/class-bale-admin.php:38
+#: includes/class-bale-admin.php:39
+msgid "Settings"
+msgstr ""
+
+#: includes/class-bale-admin.php:47
+#: includes/class-bale-admin.php:48
+msgid "Recipients"
+msgstr ""
+
+#: includes/class-bale-admin.php:56
+#: includes/class-bale-admin.php:57
+msgid "Logs"
+msgstr ""
+
+#: includes/class-bale-admin.php:90
+msgid "General Settings"
+msgstr ""
+
+#: includes/class-bale-admin.php:97
+msgid "Bot Token"
+msgstr ""
+
+#: includes/class-bale-admin.php:105
+msgid "Keep Data on Uninstall"
+msgstr ""
+
+#: includes/class-bale-admin.php:135
+msgid "Invalid Bot Token format. It typically looks like: 123456789:ABCDefGhIJKlmNoPQRsTUVwxyZ"
+msgstr ""
+
+#: includes/class-bale-admin.php:162
+msgid "Configure your Bale Bot API connection settings."
+msgstr ""
+
+#: includes/class-bale-admin.php:178
+msgid "Enter your bot token from @BotFather"
+msgstr ""
+
+#: includes/class-bale-admin.php:181
+msgid "The token is encrypted securely before being stored in the database."
+msgstr ""
+
+#: includes/class-bale-admin.php:198
+msgid "Preserve recipients and logs if the plugin is uninstalled."
+msgstr ""
+
+#: includes/class-bale-admin.php:208
+#: includes/class-bale-admin.php:219
+#: includes/class-bale-admin.php:230
+msgid "You do not have sufficient permissions to access this page."
+msgstr ""
+
+#: admin/views/settings-page.php:18
+msgid "Save Changes"
+msgstr ""
+
+#: admin/views/recipients-page.php:13
+msgid "Bale Recipients"
+msgstr ""
+
+#: admin/views/recipients-page.php:14
+msgid "Manage your notification recipients (users and groups) here."
+msgstr ""
+
+#: admin/views/logs-page.php:13
+msgid "Bale Delivery Logs"
+msgstr ""
+
+#: admin/views/logs-page.php:14
+msgid "View outbound message delivery statuses and payloads."
+msgstr ""
