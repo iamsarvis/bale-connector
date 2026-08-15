@@ -17,6 +17,21 @@ class Bale_Installer {
 	 * Run on plugin activation.
 	 */
 	public static function activate() {
+		global $wp_version;
+
+		if ( version_compare( PHP_VERSION, BALE_CONNECTOR_MIN_PHP_VERSION, '<' ) || version_compare( $wp_version, BALE_CONNECTOR_MIN_WP_VERSION, '<' ) ) {
+			deactivate_plugins( BALE_CONNECTOR_PLUGIN_BASENAME );
+			$message = sprintf(
+				/* translators: 1: Minimum PHP version, 2: Current PHP version, 3: Minimum WP version, 4: Current WP version */
+				__( 'Bale Connector requires PHP %1$s+ (current: %2$s) and WordPress %3$s+ (current: %4$s).', 'bale-connector' ),
+				BALE_CONNECTOR_MIN_PHP_VERSION,
+				PHP_VERSION,
+				BALE_CONNECTOR_MIN_WP_VERSION,
+				$wp_version
+			);
+			wp_die( esc_html( $message ), esc_html__( 'Plugin Activation Error', 'bale-connector' ), array( 'back_link' => true ) );
+		}
+
 		self::create_tables();
 		self::set_default_options();
 		update_option( 'bale_connector_db_version', self::DB_VERSION );

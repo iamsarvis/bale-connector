@@ -118,8 +118,24 @@ class Bale_Admin {
 	public function sanitize_bot_token( $input ) {
 		$raw_token = sanitize_text_field( trim( $input ) );
 
-		// If user didn't change the masked token or left placeholder
-		if ( empty( $raw_token ) || false !== strpos( $raw_token, '****' ) ) {
+		// If input is empty, clear the token
+		if ( '' === $raw_token ) {
+			return '';
+		}
+
+		// If user didn't change the masked token (e.g. contains '****'), preserve existing
+		if ( false !== strpos( $raw_token, '****' ) ) {
+			return get_option( 'bale_connector_bot_token_enc', '' );
+		}
+
+		// Local format check: standard bot tokens have format <digits>:<alphanumeric/special>
+		if ( ! preg_match( '/^[0-9]+:[A-Za-z0-9_-]+$/', $raw_token ) ) {
+			add_settings_error(
+				'bale_connector_bot_token_enc',
+				'invalid_bot_token_format',
+				__( 'Invalid Bot Token format. It typically looks like: 123456789:ABCDefGhIJKlmNoPQRsTUVwxyZ', 'bale-connector' ),
+				'error'
+			);
 			return get_option( 'bale_connector_bot_token_enc', '' );
 		}
 

@@ -18,6 +18,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'BALE_CONNECTOR_VERSION', '1.0.0' );
+define( 'BALE_CONNECTOR_MIN_PHP_VERSION', '7.4' );
+define( 'BALE_CONNECTOR_MIN_WP_VERSION', '6.0' );
 define( 'BALE_CONNECTOR_PLUGIN_FILE', __FILE__ );
 define( 'BALE_CONNECTOR_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'BALE_CONNECTOR_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -34,9 +36,59 @@ register_activation_hook( __FILE__, array( 'Bale_Installer', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'Bale_Installer', 'deactivate' ) );
 
 /**
+ * Compatibility check and admin notice for unsupported environments.
+ *
+ * @return bool True if requirements are met, false otherwise.
+ */
+function bale_connector_check_requirements() {
+	global $wp_version;
+
+	if ( version_compare( PHP_VERSION, BALE_CONNECTOR_MIN_PHP_VERSION, '<' ) ) {
+		return false;
+	}
+
+	if ( version_compare( $wp_version, BALE_CONNECTOR_MIN_WP_VERSION, '<' ) ) {
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * Render admin notice when requirements are not met and self-deactivate.
+ */
+function bale_connector_requirements_notice() {
+	if ( ! current_user_can( 'activate_plugins' ) ) {
+		return;
+	}
+
+	$message = sprintf(
+		/* translators: 1: Minimum PHP version, 2: Current PHP version, 3: Minimum WP version, 4: Current WP version */
+		esc_html__( 'Bale Connector requires PHP %1$s+ (current: %2$s) and WordPress %3$s+ (current: %4$s). The plugin has been deactivated.', 'bale-connector' ),
+		BALE_CONNECTOR_MIN_PHP_VERSION,
+		PHP_VERSION,
+		BALE_CONNECTOR_MIN_WP_VERSION,
+		$GLOBALS['wp_version']
+	);
+
+	echo '<div class="notice notice-error"><p>' . $message . '</p></div>';
+
+	deactivate_plugins( BALE_CONNECTOR_PLUGIN_BASENAME );
+
+	if ( isset( $_GET['activate'] ) ) {
+		unset( $_GET['activate'] );
+	}
+}
+
+/**
  * Initialize plugin.
  */
 function bale_connector_init() {
+	if ( ! bale_connector_check_requirements() ) {
+		add_action( 'admin_notices', 'bale_connector_requirements_notice' );
+		return;
+	}
+
 	load_plugin_textdomain( 'bale-connector', false, dirname( BALE_CONNECTOR_PLUGIN_BASENAME ) . '/languages/' );
 
 	if ( is_admin() ) {

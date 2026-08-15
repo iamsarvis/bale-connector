@@ -57,6 +57,7 @@ bale-connector/
 │   ├── class-bale-recipients.php   ← person/group CRUD + test-connection
 │   ├── class-bale-cf7-integration.php
 │   ├── class-bale-logger.php
+│   ├── class-bale-security.php     ← token libsodium encryption/masking
 │   └── class-bale-installer.php    ← dbDelta schema, uninstall cleanup
 ├── admin/{views,css,js}/
 ├── languages/
