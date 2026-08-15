@@ -1,0 +1,4 @@
+# Agent-only files — never commit or push
+AGENTS.md
+bale-connector-roadmap.md
+
