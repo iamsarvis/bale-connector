@@ -17,6 +17,31 @@ class Bale_Admin {
 	public function init() {
 		add_action( 'admin_menu', array( $this, 'register_menus' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_notices', array( $this, 'check_token_decryption_notice' ) );
+	}
+
+	/**
+	 * Display admin notice if a stored token cannot be decrypted.
+	 */
+	public function check_token_decryption_notice() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$encrypted_token = get_option( 'bale_connector_bot_token_enc', '' );
+		if ( empty( $encrypted_token ) ) {
+			return;
+		}
+
+		$decrypted = Bale_Security::decrypt( $encrypted_token );
+		if ( false === $decrypted ) {
+			$message = sprintf(
+				/* translators: %s: URL to the plugin settings page */
+				__( 'Bale Connector was unable to decrypt your Bot Token (the encryption key may have changed or corrupted). Please <a href="%s">re-enter your Bot Token</a>.', 'bale-connector' ),
+				esc_url( admin_url( 'admin.php?page=bale-connector' ) )
+			);
+			echo '<div class="notice notice-error"><p>' . wp_kses_post( $message ) . '</p></div>';
+		}
 	}
 
 	/**
@@ -139,7 +164,29 @@ class Bale_Admin {
 			return get_option( 'bale_connector_bot_token_enc', '' );
 		}
 
-		return Bale_Security::encrypt( $raw_token );
+		// Check crypto support
+		if ( ! Bale_Security::has_crypto_support() ) {
+			add_settings_error(
+				'bale_connector_bot_token_enc',
+				'no_crypto_support',
+				__( 'No supported cryptographic extension (libsodium or OpenSSL) is available on this server. The token cannot be securely stored.', 'bale-connector' ),
+				'error'
+			);
+			return get_option( 'bale_connector_bot_token_enc', '' );
+		}
+
+		$encrypted = Bale_Security::encrypt( $raw_token );
+		if ( empty( $encrypted ) ) {
+			add_settings_error(
+				'bale_connector_bot_token_enc',
+				'encryption_failed',
+				__( 'Failed to securely encrypt the Bot Token. Please check server permissions or logs.', 'bale-connector' ),
+				'error'
+			);
+			return get_option( 'bale_connector_bot_token_enc', '' );
+		}
+
+		return $encrypted;
 	}
 
 	/**
@@ -168,7 +215,9 @@ class Bale_Admin {
 
 		if ( ! empty( $encrypted_token ) ) {
 			$decrypted = Bale_Security::decrypt( $encrypted_token );
-			$display_val = Bale_Security::mask_token( $decrypted );
+			if ( false !== $decrypted && null !== $decrypted ) {
+				$display_val = Bale_Security::mask_token( $decrypted );
+			}
 		}
 
 		?>

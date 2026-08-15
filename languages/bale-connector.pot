@@ -37,61 +37,73 @@ msgstr ""
 msgid "Plugin Activation Error"
 msgstr ""
 
-#: includes/class-bale-admin.php:27
-#: includes/class-bale-admin.php:28
+#: includes/class-bale-admin.php:40
+msgid "Bale Connector was unable to decrypt your Bot Token (the encryption key may have changed or corrupted). Please <a href="%s">re-enter your Bot Token</a>."
+msgstr ""
+
+#: includes/class-bale-admin.php:52
+#: includes/class-bale-admin.php:53
 msgid "Bale Connector"
 msgstr ""
 
-#: includes/class-bale-admin.php:38
-#: includes/class-bale-admin.php:39
+#: includes/class-bale-admin.php:63
+#: includes/class-bale-admin.php:64
 msgid "Settings"
 msgstr ""
 
-#: includes/class-bale-admin.php:47
-#: includes/class-bale-admin.php:48
+#: includes/class-bale-admin.php:72
+#: includes/class-bale-admin.php:73
 msgid "Recipients"
 msgstr ""
 
-#: includes/class-bale-admin.php:56
-#: includes/class-bale-admin.php:57
+#: includes/class-bale-admin.php:81
+#: includes/class-bale-admin.php:82
 msgid "Logs"
 msgstr ""
 
-#: includes/class-bale-admin.php:90
+#: includes/class-bale-admin.php:115
 msgid "General Settings"
 msgstr ""
 
-#: includes/class-bale-admin.php:97
+#: includes/class-bale-admin.php:122
 msgid "Bot Token"
 msgstr ""
 
-#: includes/class-bale-admin.php:105
+#: includes/class-bale-admin.php:130
 msgid "Keep Data on Uninstall"
 msgstr ""
 
-#: includes/class-bale-admin.php:135
+#: includes/class-bale-admin.php:160
 msgid "Invalid Bot Token format. It typically looks like: 123456789:ABCDefGhIJKlmNoPQRsTUVwxyZ"
 msgstr ""
 
-#: includes/class-bale-admin.php:162
+#: includes/class-bale-admin.php:171
+msgid "No supported cryptographic extension (libsodium or OpenSSL) is available on this server. The token cannot be securely stored."
+msgstr ""
+
+#: includes/class-bale-admin.php:182
+msgid "Failed to securely encrypt the Bot Token. Please check server permissions or logs."
+msgstr ""
+
+#: includes/class-bale-admin.php:205
 msgid "Configure your Bale Bot API connection settings."
 msgstr ""
 
-#: includes/class-bale-admin.php:178
+#: includes/class-bale-admin.php:227
 msgid "Enter your bot token from @BotFather"
 msgstr ""
 
-#: includes/class-bale-admin.php:181
+#: includes/class-bale-admin.php:231
 msgid "The token is encrypted securely before being stored in the database."
 msgstr ""
 
-#: includes/class-bale-admin.php:198
+#: includes/class-bale-admin.php:248
 msgid "Preserve recipients and logs if the plugin is uninstalled."
 msgstr ""
 
-#: includes/class-bale-admin.php:208
-#: includes/class-bale-admin.php:219
-#: includes/class-bale-admin.php:230
+#: includes/class-bale-admin.php:258
+#: includes/class-bale-admin.php:269
+#: includes/class-bale-admin.php:280
 msgid "You do not have sufficient permissions to access this page."
 msgstr ""
 

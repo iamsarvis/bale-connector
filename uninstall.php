@@ -25,6 +25,7 @@ if ( '1' !== $keep_data ) {
 
 	// Delete options
 	delete_option( 'bale_connector_bot_token_enc' );
+	delete_option( 'bale_connector_encryption_key' );
 	delete_option( 'bale_connector_keep_data_on_uninstall' );
 	delete_option( 'bale_connector_db_version' );
 }

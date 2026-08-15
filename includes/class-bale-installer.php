@@ -34,6 +34,7 @@ class Bale_Installer {
 
 		self::create_tables();
 		self::set_default_options();
+		Bale_Security::ensure_encryption_key();
 		update_option( 'bale_connector_db_version', self::DB_VERSION );
 	}
 
