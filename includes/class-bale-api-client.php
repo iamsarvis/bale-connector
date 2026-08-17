@@ -635,6 +635,7 @@ class Bale_Api_Client {
 
 		// file_id strings are opaque tokens, not file paths — they won't exist on disk.
 		// The @ suppresses open_basedir warnings on paths outside allowed dirs.
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- intentional: suppresses open_basedir warnings from file_exists() on opaque file_id strings, preventing warning leakage into AJAX/JSON output
 		return @file_exists( $value );
 	}
 }
