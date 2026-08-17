@@ -239,8 +239,31 @@ class MockFullWPDB {
 
     public function get_results( $sql, $output = 'ARRAY_A' ) {
         $this->queries[] = $sql;
-        // Simple return of all rows
-        return array_values( $this->rows );
+        $results = array_values( $this->rows );
+
+        // Handle ORDER BY
+        if ( preg_match( '/ORDER BY ([a-z_]+) (ASC|DESC)/i', $sql, $matches ) ) {
+            $column = strtolower( $matches[1] );
+            $desc   = 'DESC' === strtoupper( $matches[2] );
+            usort( $results, function( $a, $b ) use ( $column, $desc ) {
+                $val_a = isset( $a[ $column ] ) ? $a[ $column ] : null;
+                $val_b = isset( $b[ $column ] ) ? $b[ $column ] : null;
+                if ( $val_a == $val_b ) {
+                    return 0;
+                }
+                $cmp = ( $val_a < $val_b ) ? -1 : 1;
+                return $desc ? -$cmp : $cmp;
+            } );
+        }
+
+        // Handle LIMIT and OFFSET
+        if ( preg_match( '/LIMIT (\d+) OFFSET (\d+)/i', $sql, $matches ) ) {
+            $limit  = (int) $matches[1];
+            $offset = (int) $matches[2];
+            $results = array_slice( $results, $offset, $limit );
+        }
+
+        return $results;
     }
 
     public function get_row( $sql, $output = 'ARRAY_A' ) {
@@ -435,7 +458,7 @@ expect_true( is_int( $user_rec_id ) && $user_rec_id > 0, 'Adding user recipient 
 
 $group_rec_id = Bale_Recipients::add( array(
 	'label'   => 'Dev Group',
-	'chat_id' => '-100987654321',
+	'chat_id' => '987654321',
 	'type'    => 'group',
 ) );
 expect_true( is_int( $group_rec_id ) && $group_rec_id > 0, 'Adding group recipient should return valid integer ID' );
@@ -560,5 +583,35 @@ expect_true( $fail_test->get_error_code() !== 'bale_token_missing', 'chat not fo
 $updated_after_fail = Bale_Recipients::get( $channel_rec_id );
 expect_equals( $updated_after_fail['last_test_status'], 'failed', 'failed chat lookup should record status as failed' );
 echo "[PASS] test_connection(): Chat Not Found error handled separately from missing token.\n";
+
+// Test 8j: Server-side recipient lookup in ajax_test_recipient_connection()
+// Prepare $_POST payload (notice chat_id is not passed by client, only recipient_id)
+$_POST['nonce']        = 'mock_nonce';
+$_POST['recipient_id'] = $user_rec_id;
+unset( $_POST['chat_id'] ); // Ensure client chat_id is ignored/not required
+
+$GLOBALS['bale_mock_http_next_response'] = array(
+	'headers'  => array( 'content-type' => 'application/json' ),
+	'body'     => '{"ok":true,"result":{"id":1246343444,"type":"private","first_name":"Sobhan","username":"sobhan_dev"}}',
+	'response' => array( 'code' => 200, 'message' => 'OK' ),
+);
+$GLOBALS['bale_mock_http_last_request'] = null;
+
+// Mock check_ajax_referer & json response capture
+$GLOBALS['mock_ajax_response'] = null;
+function check_ajax_referer( $action, $query_arg = false, $die = true ) { return 1; }
+function wp_send_json_success( $data = null, $status_code = null ) {
+	$GLOBALS['mock_ajax_response'] = array( 'success' => true, 'data' => $data );
+	return;
+}
+function wp_send_json_error( $data = null, $status_code = null ) {
+	$GLOBALS['mock_ajax_response'] = array( 'success' => false, 'data' => $data );
+	return;
+}
+
+$admin->ajax_test_recipient_connection();
+expect_true( ! empty( $GLOBALS['mock_ajax_response'] ) && $GLOBALS['mock_ajax_response']['success'] === true, 'ajax_test_recipient_connection should succeed' );
+expect_equals( $GLOBALS['bale_mock_http_last_request']['args']['body'], '{"chat_id":"1246343444"}', 'ajax_test_recipient_connection must look up chat_id from DB' );
+echo "[PASS] ajax_test_recipient_connection(): verified server-side chat_id lookup by recipient_id.\n";
 
 echo "ALL TESTS PASSED SUCCESSFULLY on PHP " . PHP_VERSION . "!\n";

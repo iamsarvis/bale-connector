@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Bale Connector 1.0.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-18 00:23+0330\n"
+"POT-Creation-Date: 2026-08-18 01:42+0330\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -141,7 +141,8 @@ msgstr ""
 msgid "Recipient added successfully."
 msgstr ""
 
-#: includes/class-bale-admin.php:400 includes/class-bale-recipients.php:169
+#: includes/class-bale-admin.php:400 includes/class-bale-admin.php:426
+#: includes/class-bale-recipients.php:169
 #: includes/class-bale-recipients.php:241
 msgid "Invalid recipient ID."
 msgstr ""
@@ -150,7 +151,11 @@ msgstr ""
 msgid "Recipient deleted successfully."
 msgstr ""
 
-#: includes/class-bale-admin.php:441
+#: includes/class-bale-admin.php:431 includes/class-bale-recipients.php:177
+msgid "Recipient not found."
+msgstr ""
+
+#: includes/class-bale-admin.php:450
 msgid "Connection verified successfully."
 msgstr ""
 
@@ -233,10 +238,6 @@ msgstr ""
 
 #: includes/class-bale-recipients.php:145
 msgid "Failed to save recipient to database."
-msgstr ""
-
-#: includes/class-bale-recipients.php:177
-msgid "Recipient not found."
 msgstr ""
 
 #: includes/class-bale-recipients.php:221

@@ -421,8 +421,17 @@ class Bale_Admin {
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'bale-connector' ) ), 403 );
 		}
 
-		$chat_id      = isset( $_POST['chat_id'] ) ? sanitize_text_field( wp_unslash( $_POST['chat_id'] ) ) : '';
-		$recipient_id = isset( $_POST['recipient_id'] ) ? absint( $_POST['recipient_id'] ) : null;
+		$recipient_id = isset( $_POST['recipient_id'] ) ? absint( $_POST['recipient_id'] ) : 0;
+		if ( ! $recipient_id ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid recipient ID.', 'bale-connector' ) ) );
+		}
+
+		$recipient = Bale_Recipients::get( $recipient_id );
+		if ( ! $recipient ) {
+			wp_send_json_error( array( 'message' => __( 'Recipient not found.', 'bale-connector' ) ) );
+		}
+
+		$chat_id = $recipient['chat_id'];
 
 		$result = Bale_Recipients::test_connection( $chat_id, $recipient_id );
 

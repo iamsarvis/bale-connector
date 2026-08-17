@@ -277,7 +277,6 @@ document.addEventListener('DOMContentLoaded', function () {
 			if (!row) return;
 
 			var id = row.getAttribute('data-id');
-			var chatId = row.getAttribute('data-chat-id') || target.getAttribute('data-chat-id');
 			var statusCell = row.querySelector('.bale-status-cell');
 
 			target.disabled = true;
@@ -290,7 +289,6 @@ document.addEventListener('DOMContentLoaded', function () {
 			var formData = new URLSearchParams();
 			formData.append('action', 'bale_test_recipient_connection');
 			formData.append('nonce', nonce);
-			formData.append('chat_id', chatId);
 			formData.append('recipient_id', id);
 
 			fetch(ajaxUrl, {
