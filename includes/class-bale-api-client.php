@@ -473,7 +473,7 @@ class Bale_Api_Client {
 	 * @param mixed $chat_id The chat_id to validate.
 	 * @return true|WP_Error True if valid, WP_Error on invalid format.
 	 */
-	private function validate_chat_id( $chat_id ) {
+	public static function validate_chat_id( $chat_id ) {
 		if ( '' === $chat_id || null === $chat_id ) {
 			return new WP_Error(
 				'invalid_chat_id',

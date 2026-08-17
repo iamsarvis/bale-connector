@@ -28,6 +28,7 @@ define( 'BALE_CONNECTOR_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-installer.php';
 require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-security.php';
 require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-api-client.php';
+require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-recipients.php';
 require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-admin.php';
 
 /**
@@ -135,6 +136,26 @@ function bale_connector_get_client() {
 	}
 
 	return new Bale_Api_Client( $token );
+}
+
+/**
+ * Get the saved recipients list.
+ *
+ * Extension point for bale-connector-pro (AGENTS.md §7).
+ *
+ * @param array $args Optional query arguments (orderby, order, limit, offset).
+ * @return array Array of recipient data rows.
+ */
+function bale_connector_recipients( $args = array() ) {
+	$recipients = Bale_Recipients::get_all( $args );
+
+	/**
+	 * Filter the recipients list.
+	 *
+	 * @param array $recipients Array of recipients.
+	 * @param array $args       Query arguments.
+	 */
+	return apply_filters( 'bale_connector_recipients', $recipients, $args );
 }
 
 /**

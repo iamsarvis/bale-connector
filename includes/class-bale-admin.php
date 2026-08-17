@@ -18,6 +18,12 @@ class Bale_Admin {
 		add_action( 'admin_menu', array( $this, 'register_menus' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_notices', array( $this, 'check_token_decryption_notice' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+
+		// AJAX handlers
+		add_action( 'wp_ajax_bale_save_recipient', array( $this, 'ajax_save_recipient' ) );
+		add_action( 'wp_ajax_bale_delete_recipient', array( $this, 'ajax_delete_recipient' ) );
+		add_action( 'wp_ajax_bale_test_recipient_connection', array( $this, 'ajax_test_recipient_connection' ) );
 	}
 
 	/**
@@ -282,5 +288,166 @@ class Bale_Admin {
 		}
 
 		require_once BALE_CONNECTOR_PLUGIN_DIR . 'admin/views/logs-page.php';
+	}
+
+	/**
+	 * Enqueue admin styles and scripts for Bale Connector pages.
+	 *
+	 * @param string $hook Current admin page hook.
+	 */
+	public function enqueue_admin_assets( $hook ) {
+		// Only enqueue on our plugin admin pages.
+		if ( false === strpos( $hook, 'bale-connector' ) ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'bale-connector-admin',
+			BALE_CONNECTOR_PLUGIN_URL . 'admin/css/recipients.css',
+			array(),
+			BALE_CONNECTOR_VERSION
+		);
+
+		if ( false !== strpos( $hook, 'bale-connector-recipients' ) ) {
+			wp_enqueue_script(
+				'bale-connector-recipients',
+				BALE_CONNECTOR_PLUGIN_URL . 'admin/js/recipients.js',
+				array(),
+				BALE_CONNECTOR_VERSION,
+				true
+			);
+
+			wp_localize_script(
+				'bale-connector-recipients',
+				'baleConnectorRecipients',
+				array(
+					'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
+					'nonce'     => wp_create_nonce( 'bale_recipients_nonce' ),
+					'i18n'      => array(
+						'confirmDelete' => __( 'Are you sure you want to delete this recipient?', 'bale-connector' ),
+						'testing'       => __( 'Testing...', 'bale-connector' ),
+						'saving'        => __( 'Saving...', 'bale-connector' ),
+						'save'          => __( 'Save Recipient', 'bale-connector' ),
+						'edit'          => __( 'Update Recipient', 'bale-connector' ),
+						'addNew'        => __( 'Add New Recipient', 'bale-connector' ),
+						'editTitle'     => __( 'Edit Recipient', 'bale-connector' ),
+						'cancel'        => __( 'Cancel', 'bale-connector' ),
+						'errorGeneric'  => __( 'An unexpected error occurred. Please try again.', 'bale-connector' ),
+					),
+				)
+			);
+		}
+	}
+
+	/**
+	 * AJAX handler: Save or update a recipient.
+	 */
+	public function ajax_save_recipient() {
+		check_ajax_referer( 'bale_recipients_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'bale-connector' ) ), 403 );
+		}
+
+		$id      = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
+		$label   = isset( $_POST['label'] ) ? sanitize_text_field( wp_unslash( $_POST['label'] ) ) : '';
+		$chat_id = isset( $_POST['chat_id'] ) ? sanitize_text_field( wp_unslash( $_POST['chat_id'] ) ) : '';
+		$type    = isset( $_POST['type'] ) ? sanitize_text_field( wp_unslash( $_POST['type'] ) ) : '';
+
+		$data = array(
+			'label'   => $label,
+			'chat_id' => $chat_id,
+			'type'    => $type,
+		);
+
+		if ( $id > 0 ) {
+			$result = Bale_Recipients::update( $id, $data );
+			if ( is_wp_error( $result ) ) {
+				wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+			}
+			$recipient = Bale_Recipients::get( $id );
+			wp_send_json_success( array(
+				'message'   => __( 'Recipient updated successfully.', 'bale-connector' ),
+				'recipient' => $recipient,
+				'is_new'    => false,
+			) );
+		} else {
+			$inserted_id = Bale_Recipients::add( $data );
+			if ( is_wp_error( $inserted_id ) ) {
+				wp_send_json_error( array( 'message' => $inserted_id->get_error_message() ) );
+			}
+			$recipient = Bale_Recipients::get( $inserted_id );
+			wp_send_json_success( array(
+				'message'   => __( 'Recipient added successfully.', 'bale-connector' ),
+				'recipient' => $recipient,
+				'is_new'    => true,
+			) );
+		}
+	}
+
+	/**
+	 * AJAX handler: Delete a recipient.
+	 */
+	public function ajax_delete_recipient() {
+		check_ajax_referer( 'bale_recipients_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'bale-connector' ) ), 403 );
+		}
+
+		$id = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
+		if ( ! $id ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid recipient ID.', 'bale-connector' ) ) );
+		}
+
+		$result = Bale_Recipients::delete( $id );
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+		}
+
+		wp_send_json_success( array(
+			'message' => __( 'Recipient deleted successfully.', 'bale-connector' ),
+			'id'      => $id,
+		) );
+	}
+
+	/**
+	 * AJAX handler: Test connection to a chat.
+	 */
+	public function ajax_test_recipient_connection() {
+		check_ajax_referer( 'bale_recipients_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'bale-connector' ) ), 403 );
+		}
+
+		$chat_id      = isset( $_POST['chat_id'] ) ? sanitize_text_field( wp_unslash( $_POST['chat_id'] ) ) : '';
+		$recipient_id = isset( $_POST['recipient_id'] ) ? absint( $_POST['recipient_id'] ) : null;
+
+		$result = Bale_Recipients::test_connection( $chat_id, $recipient_id );
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( array(
+				'message'    => $result->get_error_message(),
+				'error_code' => $result->get_error_code(),
+				'status'     => 'failed',
+			) );
+		}
+
+		$chat_title = isset( $result['title'] ) ? $result['title'] : ( isset( $result['first_name'] ) ? $result['first_name'] : '' );
+		$username   = isset( $result['username'] ) ? '@' . $result['username'] : '';
+		$details    = trim( $chat_title . ' ' . $username );
+
+		$msg = __( 'Connection verified successfully.', 'bale-connector' );
+		if ( ! empty( $details ) ) {
+			$msg .= ' (' . $details . ')';
+		}
+
+		wp_send_json_success( array(
+			'message'   => $msg,
+			'chat_info' => $result,
+			'status'    => 'success',
+			'tested_at' => current_time( 'mysql' ),
+		) );
 	}
 }

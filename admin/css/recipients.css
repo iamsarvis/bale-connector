@@ -1,0 +1,203 @@
+/* Bale Connector Admin Recipients Styles */
+
+.bale-connector-wrap {
+	margin-top: 20px;
+}
+
+.bale-recipients-container {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 20px;
+	margin-top: 20px;
+	align-items: flex-start;
+}
+
+.bale-recipient-form-wrap {
+	flex: 1 1 340px;
+	max-width: 420px;
+	padding: 20px;
+	background: #fff;
+	border: 1px solid #ccd0d4;
+	box-shadow: 0 1px 1px rgba(0,0,0,.04);
+	border-radius: 4px;
+	box-sizing: border-box;
+}
+
+.bale-recipient-form-wrap h2 {
+	margin-top: 0;
+	margin-bottom: 15px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #eee;
+	font-size: 1.2em;
+}
+
+.bale-recipients-list-wrap {
+	flex: 2 1 500px;
+	box-sizing: border-box;
+}
+
+.bale-form-group {
+	margin-bottom: 15px;
+}
+
+.bale-form-group label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 5px;
+}
+
+.bale-form-group input.regular-text,
+.bale-form-group select.regular-text {
+	width: 100%;
+	max-width: 100%;
+}
+
+.bale-form-group .required {
+	color: #d63638;
+}
+
+.bale-form-group .description {
+	margin-top: 4px;
+	font-size: 12px;
+	color: #646970;
+}
+
+.bale-form-actions {
+	margin-top: 20px;
+	display: flex;
+	gap: 10px;
+	align-items: center;
+}
+
+.bale-feedback {
+	margin-top: 15px;
+	padding: 10px 12px;
+	border-radius: 4px;
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.bale-feedback-success {
+	background: #edfaef;
+	border-left: 4px solid #46b450;
+	color: #1b5e20;
+}
+
+.bale-feedback-error {
+	background: #fcf0f1;
+	border-left: 4px solid #dc3232;
+	color: #a00;
+}
+
+.bale-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	font-size: 11px;
+	font-weight: 600;
+	border-radius: 12px;
+	text-transform: capitalize;
+}
+
+.bale-badge-user {
+	background: #e0f2fe;
+	color: #0369a1;
+}
+
+.bale-badge-group {
+	background: #fef3c7;
+	color: #92400e;
+}
+
+.bale-badge-channel {
+	background: #f3e8ff;
+	color: #6b21a8;
+}
+
+.bale-status-indicator {
+	display: inline-flex;
+	align-items: center;
+	font-size: 12px;
+	font-weight: 500;
+	padding: 2px 6px;
+	border-radius: 3px;
+}
+
+.bale-status-indicator::before {
+	content: '';
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	margin-right: 6px;
+}
+
+/* RTL support */
+body.rtl .bale-status-indicator::before {
+	margin-right: 0;
+	margin-left: 6px;
+}
+
+body.rtl .bale-feedback-success,
+body.rtl .bale-feedback-error {
+	border-left: none;
+	border-right: 4px solid;
+}
+
+body.rtl .bale-feedback-success {
+	border-right-color: #46b450;
+}
+
+body.rtl .bale-feedback-error {
+	border-right-color: #dc3232;
+}
+
+.bale-status-untested {
+	color: #646970;
+	background: #f0f0f1;
+}
+.bale-status-untested::before {
+	background: #8c8f94;
+}
+
+.bale-status-testing {
+	color: #856404;
+	background: #fff3cd;
+}
+.bale-status-testing::before {
+	background: #ffc107;
+	animation: bale-pulse 1s infinite alternate;
+}
+
+.bale-status-success {
+	color: #1e4620;
+	background: #edfaef;
+}
+.bale-status-success::before {
+	background: #46b450;
+}
+
+.bale-status-failed {
+	color: #a00;
+	background: #fcf0f1;
+}
+.bale-status-failed::before {
+	background: #dc3232;
+}
+
+@keyframes bale-pulse {
+	0% { opacity: 0.3; }
+	100% { opacity: 1; }
+}
+
+.bale-actions-cell {
+	white-space: nowrap;
+}
+
+.bale-actions-cell .button {
+	margin-right: 4px;
+}
+
+body.rtl .bale-actions-cell .button {
+	margin-right: 0;
+	margin-left: 4px;
+}

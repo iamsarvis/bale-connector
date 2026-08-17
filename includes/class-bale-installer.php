@@ -61,7 +61,7 @@ class Bale_Installer {
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   label VARCHAR(255) NOT NULL,
   chat_id VARCHAR(255) NOT NULL,
-  type ENUM('user','group') NOT NULL,
+  type ENUM('user','group','channel') NOT NULL,
   last_tested_at DATETIME NULL,
   last_test_status ENUM('success','failed') NULL,
   created_at DATETIME NOT NULL,

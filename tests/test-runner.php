@@ -4,6 +4,7 @@
  */
 
 define( 'ABSPATH', dirname( __DIR__ ) . '/' );
+define( 'ARRAY_A', 'ARRAY_A' );
 $GLOBALS['wp_version'] = '6.4.2';
 
 // Custom check-and-throw helper (reliable regardless of zend.assertions ini)
@@ -55,6 +56,22 @@ function wp_generate_password( $length = 12, $special_chars = true, $extra_speci
 	return $pwd;
 }
 function is_wp_error( $thing ) { return $thing instanceof WP_Error; }
+function current_time( $type, $gmt = 0 ) { return date( 'Y-m-d H:i:s' ); }
+function wp_parse_args( $args, $defaults = array() ) {
+	if ( is_object( $args ) ) {
+		$r = get_object_vars( $args );
+	} elseif ( is_array( $args ) ) {
+		$r =& $args;
+	} else {
+		parse_str( (string) $args, $r );
+	}
+	if ( is_array( $defaults ) && $defaults ) {
+		return array_merge( $defaults, $r );
+	}
+	return $r;
+}
+function absint( $maybeint ) { return abs( (int) $maybeint ); }
+function apply_filters( $hook_name, $value, ...$args ) { return $value; }
 
 // Mock WP_Error class
 class WP_Error {
@@ -194,15 +211,81 @@ $mock_options['bale_connector_encryption_key'] = 'key';
 $mock_options['bale_connector_keep_data_on_uninstall'] = '0';
 $mock_options['bale_connector_db_version'] = '1.0.0';
 
-class MockWPDB {
+// Mock WPDB for Phase 3 CRUD tests
+class MockFullWPDB {
     public $prefix = 'wp_';
+    public $insert_id = 0;
+    public $last_error = '';
+    public $rows = array();
     public $queries = array();
+
+    public function get_charset_collate() {
+        return 'DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+    }
+
+    public function prepare( $query, ...$args ) {
+        if ( isset( $args[0] ) && is_array( $args[0] ) ) {
+            $args = $args[0];
+        }
+        foreach ( $args as $arg ) {
+            if ( is_int( $arg ) ) {
+                $query = preg_replace( '/%d/', (string) $arg, $query, 1 );
+            } else {
+                $query = preg_replace( '/%s/', "'" . addslashes( (string) $arg ) . "'", $query, 1 );
+            }
+        }
+        return $query;
+    }
+
+    public function get_results( $sql, $output = 'ARRAY_A' ) {
+        $this->queries[] = $sql;
+        // Simple return of all rows
+        return array_values( $this->rows );
+    }
+
+    public function get_row( $sql, $output = 'ARRAY_A' ) {
+        $this->queries[] = $sql;
+        if ( preg_match( '/WHERE id = (\d+)/', $sql, $matches ) ) {
+            $id = (int) $matches[1];
+            return isset( $this->rows[ $id ] ) ? $this->rows[ $id ] : null;
+        }
+        return null;
+    }
+
+    public function insert( $table, $data, $format = null ) {
+        $this->insert_id++;
+        $row = array_merge( array( 'id' => $this->insert_id ), $data );
+        $this->rows[ $this->insert_id ] = $row;
+        $this->queries[] = "INSERT INTO $table ...";
+        return 1;
+    }
+
+    public function update( $table, $data, $where, $format = null, $where_format = null ) {
+        $id = isset( $where['id'] ) ? (int) $where['id'] : 0;
+        if ( $id && isset( $this->rows[ $id ] ) ) {
+            $this->rows[ $id ] = array_merge( $this->rows[ $id ], $data );
+            $this->queries[] = "UPDATE $table ...";
+            return 1;
+        }
+        return 0;
+    }
+
+    public function delete( $table, $where, $where_format = null ) {
+        $id = isset( $where['id'] ) ? (int) $where['id'] : 0;
+        if ( $id && isset( $this->rows[ $id ] ) ) {
+            unset( $this->rows[ $id ] );
+            $this->queries[] = "DELETE FROM $table ...";
+            return 1;
+        }
+        return 0;
+    }
+
     public function query( $sql ) {
         $this->queries[] = $sql;
         return true;
     }
 }
-$GLOBALS['wpdb'] = new MockWPDB();
+$GLOBALS['wpdb'] = new MockFullWPDB();
 
 define( 'WP_UNINSTALL_PLUGIN', true );
 require dirname( __DIR__ ) . '/uninstall.php';
@@ -332,5 +415,150 @@ echo "[PASS] Non-existent path correctly treated as file_id (JSON mode), not mul
 
 // Cleanup temp files.
 @unlink( $test_file );
+
+// ==========================================
+// Phase 3: Recipient Management Tests
+// ==========================================
+echo "\n--- Phase 3: Recipient Management Tests ---\n";
+
+// Reset DB mock for recipient testing
+$wpdb_mock = new MockFullWPDB();
+$GLOBALS['wpdb'] = $wpdb_mock;
+
+// Test 8a: Add Recipients (user, group, channel)
+$user_rec_id = Bale_Recipients::add( array(
+	'label'   => 'Admin User',
+	'chat_id' => '1246343443',
+	'type'    => 'user',
+) );
+expect_true( is_int( $user_rec_id ) && $user_rec_id > 0, 'Adding user recipient should return valid integer ID' );
+
+$group_rec_id = Bale_Recipients::add( array(
+	'label'   => 'Dev Group',
+	'chat_id' => '-100987654321',
+	'type'    => 'group',
+) );
+expect_true( is_int( $group_rec_id ) && $group_rec_id > 0, 'Adding group recipient should return valid integer ID' );
+
+$channel_rec_id = Bale_Recipients::add( array(
+	'label'   => 'News Channel',
+	'chat_id' => '@bale_news_channel',
+	'type'    => 'channel',
+) );
+expect_true( is_int( $channel_rec_id ) && $channel_rec_id > 0, 'Adding channel recipient should return valid integer ID' );
+echo "[PASS] Recipient CRUD: user, group, and channel types added successfully.\n";
+
+// Test 8b: Type Validation in add() and update()
+$invalid_type_add = Bale_Recipients::add( array(
+	'label'   => 'Invalid Type',
+	'chat_id' => '123456',
+	'type'    => 'supergroup', // not in allowed types
+) );
+expect_true( is_wp_error( $invalid_type_add ), 'add() should reject invalid recipient type' );
+expect_equals( $invalid_type_add->get_error_code(), 'bale_recipient_invalid_type', 'invalid type error code mismatch' );
+
+$invalid_type_update = Bale_Recipients::update( $user_rec_id, array(
+	'type' => 'broadcast',
+) );
+expect_true( is_wp_error( $invalid_type_update ), 'update() should reject invalid recipient type' );
+expect_equals( $invalid_type_update->get_error_code(), 'bale_recipient_invalid_type', 'invalid type update error code mismatch' );
+echo "[PASS] Recipient CRUD: invalid types rejected by add() and update().\n";
+
+// Test 8c: chat_id Format Validation in add() and update()
+$invalid_chat_add = Bale_Recipients::add( array(
+	'label'   => 'Invalid Chat ID',
+	'chat_id' => 'not-a-valid-chat-id-string',
+	'type'    => 'user',
+) );
+expect_true( is_wp_error( $invalid_chat_add ), 'add() should reject invalid chat_id format' );
+expect_equals( $invalid_chat_add->get_error_code(), 'invalid_chat_id', 'invalid chat_id error code mismatch' );
+
+$invalid_chat_update = Bale_Recipients::update( $user_rec_id, array(
+	'chat_id' => 'bad_chat_id',
+) );
+expect_true( is_wp_error( $invalid_chat_update ), 'update() should reject invalid chat_id format' );
+expect_equals( $invalid_chat_update->get_error_code(), 'invalid_chat_id', 'invalid chat_id update error code mismatch' );
+echo "[PASS] Recipient CRUD: chat_id format strictly validated.\n";
+
+// Test 8d: Preservation of save without requiring successful test_connection()
+// (Notice: we saved user, group, channel recipients above without running test_connection() or even having a valid bot connection!)
+$retrieved_channel = Bale_Recipients::get( $channel_rec_id );
+expect_true( null !== $retrieved_channel, 'Channel recipient should be retrieved from DB' );
+expect_equals( $retrieved_channel['label'], 'News Channel', 'Channel label mismatch' );
+expect_equals( $retrieved_channel['chat_id'], '@bale_news_channel', 'Channel chat_id mismatch' );
+expect_equals( $retrieved_channel['type'], 'channel', 'Channel type mismatch' );
+expect_true( null === $retrieved_channel['last_test_status'], 'Untested recipient should have null last_test_status' );
+echo "[PASS] Recipients saved directly without requiring test_connection().\n";
+
+// Test 8e: Update and Delete Recipients
+$update_result = Bale_Recipients::update( $user_rec_id, array(
+	'label'   => 'Updated Admin User',
+	'chat_id' => '1246343444',
+	'type'    => 'user',
+) );
+expect_true( true === $update_result, 'Updating recipient should return true' );
+$updated_user = Bale_Recipients::get( $user_rec_id );
+expect_equals( $updated_user['label'], 'Updated Admin User', 'Updated label mismatch' );
+expect_equals( $updated_user['chat_id'], '1246343444', 'Updated chat_id mismatch' );
+
+$delete_result = Bale_Recipients::delete( $group_rec_id );
+expect_true( true === $delete_result, 'Deleting recipient should return true' );
+expect_true( null === Bale_Recipients::get( $group_rec_id ), 'Deleted recipient should no longer exist' );
+echo "[PASS] Recipient update and delete verified.\n";
+
+// Test 8f: bale_connector_recipients() global helper & filter
+$all_recipients = bale_connector_recipients();
+expect_true( is_array( $all_recipients ), 'bale_connector_recipients() should return array' );
+expect_equals( count( $all_recipients ), 2, 'Should have 2 remaining recipients' );
+echo "[PASS] bale_connector_recipients() helper verified.\n";
+
+// Test 8g: test_connection() - Missing Bot Token returns distinct error
+$mock_options['bale_connector_bot_token_enc'] = ''; // Clear token
+$no_token_test = Bale_Recipients::test_connection( '1246343443', $user_rec_id );
+expect_true( is_wp_error( $no_token_test ), 'test_connection without token should return WP_Error' );
+expect_equals( $no_token_test->get_error_code(), 'bale_token_missing', 'missing token error code mismatch' );
+expect_equals( $no_token_test->get_error_message(), 'Please configure your Bot Token first.', 'missing token message mismatch' );
+
+$updated_after_token_fail = Bale_Recipients::get( $user_rec_id );
+expect_equals( $updated_after_token_fail['last_test_status'], 'failed', 'failed test should record last_test_status as failed' );
+echo "[PASS] test_connection(): missing bot token returns distinct 'Please configure your Bot Token first.' error.\n";
+
+// Test 8h: test_connection() - Successful getChat call
+// Set up valid encrypted token
+$mock_options['bale_connector_bot_token_enc'] = Bale_Security::encrypt( '123456789:test_token_for_mocking' );
+$GLOBALS['bale_mock_http_next_response'] = array(
+	'headers'  => array( 'content-type' => 'application/json' ),
+	'body'     => '{"ok":true,"result":{"id":1246343443,"type":"private","first_name":"Sobhan","username":"sobhan_dev"}}',
+	'response' => array( 'code' => 200, 'message' => 'OK' ),
+);
+$GLOBALS['bale_mock_http_last_request'] = null;
+
+$success_test = Bale_Recipients::test_connection( '1246343443', $user_rec_id );
+expect_true( ! is_wp_error( $success_test ), 'test_connection should succeed on ok:true' );
+expect_equals( $success_test['username'], 'sobhan_dev', 'test_connection username mismatch' );
+
+$last_req = $GLOBALS['bale_mock_http_last_request'];
+expect_equals( $last_req['url'], 'https://tapi.bale.ai/bot123456789:test_token_for_mocking/getChat', 'getChat URL mismatch' );
+$decoded_body = json_decode( $last_req['args']['body'], true );
+expect_equals( $decoded_body['chat_id'], '1246343443', 'getChat body chat_id mismatch' );
+
+$updated_after_success = Bale_Recipients::get( $user_rec_id );
+expect_equals( $updated_after_success['last_test_status'], 'success', 'success test should record last_test_status as success' );
+echo "[PASS] test_connection(): getChat success verified & status recorded.\n";
+
+// Test 8i: test_connection() - Chat not found / API failure
+$GLOBALS['bale_mock_http_next_response'] = array(
+	'headers'  => array( 'content-type' => 'application/json' ),
+	'body'     => '{"ok":false,"error_code":400,"description":"Bad Request: chat not found"}',
+	'response' => array( 'code' => 400, 'message' => 'Bad Request' ),
+);
+$fail_test = Bale_Recipients::test_connection( '@non_existent_channel', $channel_rec_id );
+expect_true( is_wp_error( $fail_test ), 'test_connection should return WP_Error when chat not found' );
+expect_equals( $fail_test->get_error_message(), 'Bad Request: chat not found', 'chat not found description mismatch' );
+expect_true( $fail_test->get_error_code() !== 'bale_token_missing', 'chat not found error must not be conflated with missing token error' );
+
+$updated_after_fail = Bale_Recipients::get( $channel_rec_id );
+expect_equals( $updated_after_fail['last_test_status'], 'failed', 'failed chat lookup should record status as failed' );
+echo "[PASS] test_connection(): Chat Not Found error handled separately from missing token.\n";
 
 echo "ALL TESTS PASSED SUCCESSFULLY on PHP " . PHP_VERSION . "!\n";

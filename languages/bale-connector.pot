@@ -1,122 +1,375 @@
-# Copyright (C) 2026 Sobhan
-# This file is distributed under the GPLv2 or later.
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the Bale Connector package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: Bale Connector 1.0.0
-"
-"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/bale-connector
-"
-"Last-Translator: Sobhan <iamsarvis@gmail.com>
-"
-"Language-Team: Persian
-"
-"MIME-Version: 1.0
-"
-"Content-Type: text/plain; charset=UTF-8
-"
-"Content-Transfer-Encoding: 8bit
-"
-"POT-Creation-Date: 2026-08-15T06:00:00+00:00
-"
-"PO-Revision-Date: 2026-08-15T06:00:00+00:00
-"
-"Language: en
-"
-"Plural-Forms: nplurals=2; plural=(n != 1);
-"
+"Project-Id-Version: Bale Connector 1.0.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-18 00:23+0330\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
 
-#: bale-connector.php:65
-msgid "Bale Connector requires PHP %1+ (current: %2) and WordPress %3+ (current: %4). The plugin has been deactivated."
+#: includes/class-bale-admin.php:46
+#, php-format
+msgid ""
+"Bale Connector was unable to decrypt your Bot Token (the encryption key may "
+"have changed or corrupted). Please <a href=\"%s\">re-enter your Bot Token</"
+"a>."
+msgstr ""
+
+#: includes/class-bale-admin.php:58 includes/class-bale-admin.php:59
+msgid "Bale Connector"
+msgstr ""
+
+#: includes/class-bale-admin.php:69 includes/class-bale-admin.php:70
+msgid "Settings"
+msgstr ""
+
+#: includes/class-bale-admin.php:78 includes/class-bale-admin.php:79
+msgid "Recipients"
+msgstr ""
+
+#: includes/class-bale-admin.php:87 includes/class-bale-admin.php:88
+msgid "Logs"
+msgstr ""
+
+#: includes/class-bale-admin.php:121
+msgid "General Settings"
+msgstr ""
+
+#: includes/class-bale-admin.php:128
+msgid "Bot Token"
+msgstr ""
+
+#: includes/class-bale-admin.php:136
+msgid "Keep Data on Uninstall"
+msgstr ""
+
+#: includes/class-bale-admin.php:167
+msgid ""
+"Invalid Bot Token format. It typically looks like: 123456789:"
+"ABCDefGhIJKlmNoPQRsTUVwxyZ"
+msgstr ""
+
+#: includes/class-bale-admin.php:178
+msgid ""
+"No supported cryptographic extension (libsodium or OpenSSL) is available on "
+"this server. The token cannot be securely stored."
+msgstr ""
+
+#: includes/class-bale-admin.php:189
+msgid ""
+"Failed to securely encrypt the Bot Token. Please check server permissions or "
+"logs."
+msgstr ""
+
+#: includes/class-bale-admin.php:212
+msgid "Configure your Bale Bot API connection settings."
+msgstr ""
+
+#: includes/class-bale-admin.php:234
+msgid "Enter your bot token from @BotFather"
+msgstr ""
+
+#: includes/class-bale-admin.php:238
+msgid "The token is encrypted securely before being stored in the database."
+msgstr ""
+
+#: includes/class-bale-admin.php:255
+msgid "Preserve recipients and logs if the plugin is uninstalled."
+msgstr ""
+
+#: includes/class-bale-admin.php:265 includes/class-bale-admin.php:276
+#: includes/class-bale-admin.php:287
+msgid "You do not have sufficient permissions to access this page."
+msgstr ""
+
+#: includes/class-bale-admin.php:327
+msgid "Are you sure you want to delete this recipient?"
+msgstr ""
+
+#: includes/class-bale-admin.php:328
+msgid "Testing..."
+msgstr ""
+
+#: includes/class-bale-admin.php:329
+msgid "Saving..."
+msgstr ""
+
+#: includes/class-bale-admin.php:330 admin/views/recipients-page.php:63
+msgid "Save Recipient"
+msgstr ""
+
+#: includes/class-bale-admin.php:331
+msgid "Update Recipient"
+msgstr ""
+
+#: includes/class-bale-admin.php:332 admin/views/recipients-page.php:23
+msgid "Add New Recipient"
+msgstr ""
+
+#: includes/class-bale-admin.php:333
+msgid "Edit Recipient"
+msgstr ""
+
+#: includes/class-bale-admin.php:334 admin/views/recipients-page.php:66
+msgid "Cancel"
+msgstr ""
+
+#: includes/class-bale-admin.php:335
+msgid "An unexpected error occurred. Please try again."
+msgstr ""
+
+#: includes/class-bale-admin.php:349 includes/class-bale-admin.php:395
+#: includes/class-bale-admin.php:421
+msgid "Permission denied."
+msgstr ""
+
+#: includes/class-bale-admin.php:370
+msgid "Recipient updated successfully."
+msgstr ""
+
+#: includes/class-bale-admin.php:381
+msgid "Recipient added successfully."
+msgstr ""
+
+#: includes/class-bale-admin.php:400 includes/class-bale-recipients.php:169
+#: includes/class-bale-recipients.php:241
+msgid "Invalid recipient ID."
+msgstr ""
+
+#: includes/class-bale-admin.php:409
+msgid "Recipient deleted successfully."
+msgstr ""
+
+#: includes/class-bale-admin.php:441
+msgid "Connection verified successfully."
 msgstr ""
 
 #: includes/class-bale-installer.php:26
-msgid "Bale Connector requires PHP %1+ (current: %2) and WordPress %3+ (current: %4)."
+#, php-format
+msgid ""
+"Bale Connector requires PHP %1$s+ (current: %2$s) and WordPress %3$s+ "
+"(current: %4$s)."
 msgstr ""
 
 #: includes/class-bale-installer.php:32
 msgid "Plugin Activation Error"
 msgstr ""
 
-#: includes/class-bale-admin.php:40
-msgid "Bale Connector was unable to decrypt your Bot Token (the encryption key may have changed or corrupted). Please <a href="%s">re-enter your Bot Token</a>."
+#: includes/class-bale-api-client.php:298
+#, php-format
+msgid "Bale API returned an invalid (non-JSON) response for %1$s (HTTP %2$d)."
 msgstr ""
 
-#: includes/class-bale-admin.php:52
-#: includes/class-bale-admin.php:53
-msgid "Bale Connector"
+#: includes/class-bale-api-client.php:315
+#, php-format
+msgid "Bale API call to %s succeeded but returned no result field."
 msgstr ""
 
-#: includes/class-bale-admin.php:63
-#: includes/class-bale-admin.php:64
-msgid "Settings"
+#: includes/class-bale-api-client.php:354
+#, php-format
+msgid "File not found: %s"
 msgstr ""
 
-#: includes/class-bale-admin.php:72
-#: includes/class-bale-admin.php:73
-msgid "Recipients"
+#: includes/class-bale-api-client.php:366
+#, php-format
+msgid "File is not readable: %s"
 msgstr ""
 
-#: includes/class-bale-admin.php:81
-#: includes/class-bale-admin.php:82
-msgid "Logs"
+#: includes/class-bale-api-client.php:380
+#, php-format
+msgid "Unable to determine file size: %s"
 msgstr ""
 
-#: includes/class-bale-admin.php:115
-msgid "General Settings"
+#: includes/class-bale-api-client.php:393
+#, php-format
+msgid ""
+"File size (%1$s bytes) exceeds the maximum allowed (%2$s bytes) for Bale API "
+"uploads: %3$s"
 msgstr ""
 
-#: includes/class-bale-admin.php:122
-msgid "Bot Token"
+#: includes/class-bale-api-client.php:412
+#, php-format
+msgid "Failed to read file contents: %s"
 msgstr ""
 
-#: includes/class-bale-admin.php:130
-msgid "Keep Data on Uninstall"
+#: includes/class-bale-api-client.php:480
+msgid "chat_id is required and cannot be empty."
 msgstr ""
 
-#: includes/class-bale-admin.php:160
-msgid "Invalid Bot Token format. It typically looks like: 123456789:ABCDefGhIJKlmNoPQRsTUVwxyZ"
+#: includes/class-bale-api-client.php:498
+#, php-format
+msgid "Invalid chat_id format: %s. Must be an integer or @username string."
 msgstr ""
 
-#: includes/class-bale-admin.php:171
-msgid "No supported cryptographic extension (libsodium or OpenSSL) is available on this server. The token cannot be securely stored."
+#: includes/class-bale-api-client.php:525
+#, php-format
+msgid "%1$s length (%2$d) exceeds the maximum allowed (%3$d) for the Bale API."
 msgstr ""
 
-#: includes/class-bale-admin.php:182
-msgid "Failed to securely encrypt the Bot Token. Please check server permissions or logs."
+#: includes/class-bale-api-client.php:582
+#, php-format
+msgid "Bale API call to %1$s failed (HTTP %2$d)."
 msgstr ""
 
-#: includes/class-bale-admin.php:205
-msgid "Configure your Bale Bot API connection settings."
+#: includes/class-bale-recipients.php:110
+#: includes/class-bale-recipients.php:188
+msgid "Recipient label is required."
 msgstr ""
 
-#: includes/class-bale-admin.php:227
-msgid "Enter your bot token from @BotFather"
+#: includes/class-bale-recipients.php:117
+#: includes/class-bale-recipients.php:195
+msgid "Invalid recipient type. Must be user, group, or channel."
 msgstr ""
 
-#: includes/class-bale-admin.php:231
-msgid "The token is encrypted securely before being stored in the database."
+#: includes/class-bale-recipients.php:145
+msgid "Failed to save recipient to database."
 msgstr ""
 
-#: includes/class-bale-admin.php:248
-msgid "Preserve recipients and logs if the plugin is uninstalled."
+#: includes/class-bale-recipients.php:177
+msgid "Recipient not found."
 msgstr ""
 
-#: includes/class-bale-admin.php:258
-#: includes/class-bale-admin.php:269
-#: includes/class-bale-admin.php:280
-msgid "You do not have sufficient permissions to access this page."
+#: includes/class-bale-recipients.php:221
+msgid "Failed to update recipient in database."
 msgstr ""
 
-#: admin/views/settings-page.php:18
-msgid "Save Changes"
+#: includes/class-bale-recipients.php:255
+msgid "Failed to delete recipient from database."
 msgstr ""
 
-#: admin/views/recipients-page.php:13
+#: includes/class-bale-recipients.php:317
+msgid "Please configure your Bot Token first."
+msgstr ""
+
+#: admin/views/recipients-page.php:15
 msgid "Bale Recipients"
 msgstr ""
 
-#: admin/views/recipients-page.php:14
-msgid "Manage your notification recipients (users and groups) here."
+#: admin/views/recipients-page.php:17
+msgid ""
+"Manage your notification recipients (users, groups, and channels) and test "
+"their reachability."
+msgstr ""
+
+#: admin/views/recipients-page.php:28
+msgid "Label / Name"
+msgstr ""
+
+#: admin/views/recipients-page.php:33
+msgid "e.g. Sales Team or Admin"
+msgstr ""
+
+#: admin/views/recipients-page.php:35
+msgid "A human-friendly name to identify this recipient in form mappings."
+msgstr ""
+
+#: admin/views/recipients-page.php:39
+msgid "Recipient Type"
+msgstr ""
+
+#: admin/views/recipients-page.php:41
+msgid "Person (User)"
+msgstr ""
+
+#: admin/views/recipients-page.php:42 admin/views/recipients-page.php:100
+msgid "Group"
+msgstr ""
+
+#: admin/views/recipients-page.php:43 admin/views/recipients-page.php:102
+msgid "Channel"
+msgstr ""
+
+#: admin/views/recipients-page.php:45
+msgid "Select whether the target is a private user, group chat, or channel."
+msgstr ""
+
+#: admin/views/recipients-page.php:49
+msgid "Chat ID / Username"
+msgstr ""
+
+#: admin/views/recipients-page.php:54
+msgid "e.g. 123456789 or @channelusername"
+msgstr ""
+
+#: admin/views/recipients-page.php:57
+msgid "User/Group numerical Chat ID, or @channelusername for public channels."
+msgstr ""
+
+#: admin/views/recipients-page.php:79
+msgid "ID"
+msgstr ""
+
+#: admin/views/recipients-page.php:80
+msgid "Label"
+msgstr ""
+
+#: admin/views/recipients-page.php:81
+msgid "Chat ID"
+msgstr ""
+
+#: admin/views/recipients-page.php:82
+msgid "Type"
+msgstr ""
+
+#: admin/views/recipients-page.php:83
+msgid "Connection"
+msgstr ""
+
+#: admin/views/recipients-page.php:84
+msgid "Actions"
+msgstr ""
+
+#: admin/views/recipients-page.php:90
+msgid ""
+"No recipients configured yet. Add your first recipient using the form on the "
+"left."
+msgstr ""
+
+#: admin/views/recipients-page.php:98
+msgid "Person"
+msgstr ""
+
+#: admin/views/recipients-page.php:106
+msgid "Untested"
+msgstr ""
+
+#: admin/views/recipients-page.php:108
+msgid "Connected"
+msgstr ""
+
+#: admin/views/recipients-page.php:110
+msgid "Failed"
+msgstr ""
+
+#: admin/views/recipients-page.php:123
+#, php-format
+msgid "Last tested: %s"
+msgstr ""
+
+#: admin/views/recipients-page.php:129
+msgid "Test"
+msgstr ""
+
+#: admin/views/recipients-page.php:132
+msgid "Edit"
+msgstr ""
+
+#: admin/views/recipients-page.php:135
+msgid "Delete"
+msgstr ""
+
+#: admin/views/settings-page.php:19
+msgid "Save Changes"
 msgstr ""
 
 #: admin/views/logs-page.php:13
@@ -125,4 +378,27 @@ msgstr ""
 
 #: admin/views/logs-page.php:14
 msgid "View outbound message delivery statuses and payloads."
+msgstr ""
+
+#: bale-connector.php:69
+#, php-format
+msgid ""
+"Bale Connector requires PHP %1$s+ (current: %2$s) and WordPress %3$s+ "
+"(current: %4$s). The plugin has been deactivated."
+msgstr ""
+
+#: bale-connector.php:118 bale-connector.php:127
+msgid ""
+"No Bale bot token is configured. Please set your token on the Settings page."
+msgstr ""
+
+#: bale-connector.php:134
+msgid ""
+"Unable to decrypt the stored bot token. The encryption key may have changed "
+"or been corrupted."
+msgstr ""
+
+#: bale-connector.php:208
+#, php-format
+msgid "Connected to bot @%1$s (id: %2$s, name: %3$s)"
 msgstr ""
