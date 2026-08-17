@@ -71,6 +71,7 @@ function wp_parse_args( $args, $defaults = array() ) {
 	return $r;
 }
 function absint( $maybeint ) { return abs( (int) $maybeint ); }
+function wp_unslash( $val ) { return is_string( $val ) ? stripslashes( $val ) : $val; }
 function apply_filters( $hook_name, $value, ...$args ) { return $value; }
 
 // Mock WP_Error class
@@ -599,13 +600,22 @@ $GLOBALS['bale_mock_http_last_request'] = null;
 
 // Mock check_ajax_referer & json response capture
 $GLOBALS['mock_ajax_response'] = null;
+$GLOBALS['throw_on_json_response'] = false;
+class AjaxDieException extends Exception {}
+
 function check_ajax_referer( $action, $query_arg = false, $die = true ) { return 1; }
 function wp_send_json_success( $data = null, $status_code = null ) {
 	$GLOBALS['mock_ajax_response'] = array( 'success' => true, 'data' => $data );
+	if ( ! empty( $GLOBALS['throw_on_json_response'] ) ) {
+		throw new AjaxDieException( 'wp_send_json_success called' );
+	}
 	return;
 }
 function wp_send_json_error( $data = null, $status_code = null ) {
 	$GLOBALS['mock_ajax_response'] = array( 'success' => false, 'data' => $data );
+	if ( ! empty( $GLOBALS['throw_on_json_response'] ) ) {
+		throw new AjaxDieException( 'wp_send_json_error called' );
+	}
 	return;
 }
 
@@ -613,5 +623,61 @@ $admin->ajax_test_recipient_connection();
 expect_true( ! empty( $GLOBALS['mock_ajax_response'] ) && $GLOBALS['mock_ajax_response']['success'] === true, 'ajax_test_recipient_connection should succeed' );
 expect_equals( $GLOBALS['bale_mock_http_last_request']['args']['body'], '{"chat_id":"1246343444"}', 'ajax_test_recipient_connection must look up chat_id from DB' );
 echo "[PASS] ajax_test_recipient_connection(): verified server-side chat_id lookup by recipient_id.\n";
+
+// Test 8k: AJAX Error Paths & explicit return verification
+// Enable throw_on_json_response so any unreturned code execution or fallthrough after wp_send_json_error would be caught
+$GLOBALS['throw_on_json_response'] = true;
+
+// 1. Invalid recipient_id (0)
+$_POST['recipient_id'] = 0;
+$caught = false;
+try {
+	$admin->ajax_test_recipient_connection();
+} catch ( AjaxDieException $e ) {
+	$caught = true;
+}
+expect_true( $caught, 'ajax_test_recipient_connection with id=0 should halt via wp_send_json_error' );
+expect_equals( $GLOBALS['mock_ajax_response']['success'], false, 'ajax response should be failure' );
+expect_equals( $GLOBALS['mock_ajax_response']['data']['message'], 'Invalid recipient ID.', 'error message mismatch for id=0' );
+
+// 2. Non-existent recipient_id (99999)
+$_POST['recipient_id'] = 99999;
+$caught = false;
+try {
+	$admin->ajax_test_recipient_connection();
+} catch ( AjaxDieException $e ) {
+	$caught = true;
+}
+expect_true( $caught, 'ajax_test_recipient_connection with non-existent id should halt via wp_send_json_error' );
+expect_equals( $GLOBALS['mock_ajax_response']['success'], false, 'ajax response should be failure' );
+expect_equals( $GLOBALS['mock_ajax_response']['data']['message'], 'Recipient not found.', 'error message mismatch for non-existent id' );
+
+// 3. ajax_delete_recipient with id=0
+$_POST['id'] = 0;
+$caught = false;
+try {
+	$admin->ajax_delete_recipient();
+} catch ( AjaxDieException $e ) {
+	$caught = true;
+}
+expect_true( $caught, 'ajax_delete_recipient with id=0 should halt via wp_send_json_error' );
+expect_equals( $GLOBALS['mock_ajax_response']['data']['message'], 'Invalid recipient ID.', 'error message mismatch for delete id=0' );
+
+// 4. ajax_save_recipient with invalid type
+$_POST['id']      = 0;
+$_POST['label']   = 'Invalid Type Test';
+$_POST['chat_id'] = '123456';
+$_POST['type']    = 'invalid_type';
+$caught = false;
+try {
+	$admin->ajax_save_recipient();
+} catch ( AjaxDieException $e ) {
+	$caught = true;
+}
+expect_true( $caught, 'ajax_save_recipient with invalid type should halt via wp_send_json_error' );
+expect_equals( $GLOBALS['mock_ajax_response']['data']['message'], 'Invalid recipient type. Must be user, group, or channel.', 'error message mismatch for save invalid type' );
+
+$GLOBALS['throw_on_json_response'] = false;
+echo "[PASS] AJAX error paths & explicit return guarantees verified.\n";
 
 echo "ALL TESTS PASSED SUCCESSFULLY on PHP " . PHP_VERSION . "!\n";

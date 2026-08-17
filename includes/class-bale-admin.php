@@ -347,6 +347,7 @@ class Bale_Admin {
 
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'bale-connector' ) ), 403 );
+			return;
 		}
 
 		$id      = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
@@ -364,6 +365,7 @@ class Bale_Admin {
 			$result = Bale_Recipients::update( $id, $data );
 			if ( is_wp_error( $result ) ) {
 				wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+				return;
 			}
 			$recipient = Bale_Recipients::get( $id );
 			wp_send_json_success( array(
@@ -371,10 +373,12 @@ class Bale_Admin {
 				'recipient' => $recipient,
 				'is_new'    => false,
 			) );
+			return;
 		} else {
 			$inserted_id = Bale_Recipients::add( $data );
 			if ( is_wp_error( $inserted_id ) ) {
 				wp_send_json_error( array( 'message' => $inserted_id->get_error_message() ) );
+				return;
 			}
 			$recipient = Bale_Recipients::get( $inserted_id );
 			wp_send_json_success( array(
@@ -382,6 +386,7 @@ class Bale_Admin {
 				'recipient' => $recipient,
 				'is_new'    => true,
 			) );
+			return;
 		}
 	}
 
@@ -393,22 +398,26 @@ class Bale_Admin {
 
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'bale-connector' ) ), 403 );
+			return;
 		}
 
 		$id = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
 		if ( ! $id ) {
 			wp_send_json_error( array( 'message' => __( 'Invalid recipient ID.', 'bale-connector' ) ) );
+			return;
 		}
 
 		$result = Bale_Recipients::delete( $id );
 		if ( is_wp_error( $result ) ) {
 			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+			return;
 		}
 
 		wp_send_json_success( array(
 			'message' => __( 'Recipient deleted successfully.', 'bale-connector' ),
 			'id'      => $id,
 		) );
+		return;
 	}
 
 	/**
@@ -419,16 +428,19 @@ class Bale_Admin {
 
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'bale-connector' ) ), 403 );
+			return;
 		}
 
 		$recipient_id = isset( $_POST['recipient_id'] ) ? absint( $_POST['recipient_id'] ) : 0;
 		if ( ! $recipient_id ) {
 			wp_send_json_error( array( 'message' => __( 'Invalid recipient ID.', 'bale-connector' ) ) );
+			return;
 		}
 
 		$recipient = Bale_Recipients::get( $recipient_id );
 		if ( ! $recipient ) {
 			wp_send_json_error( array( 'message' => __( 'Recipient not found.', 'bale-connector' ) ) );
+			return;
 		}
 
 		$chat_id = $recipient['chat_id'];
@@ -441,6 +453,7 @@ class Bale_Admin {
 				'error_code' => $result->get_error_code(),
 				'status'     => 'failed',
 			) );
+			return;
 		}
 
 		$chat_title = isset( $result['title'] ) ? $result['title'] : ( isset( $result['first_name'] ) ? $result['first_name'] : '' );
@@ -458,5 +471,6 @@ class Bale_Admin {
 			'status'    => 'success',
 			'tested_at' => current_time( 'mysql' ),
 		) );
+		return;
 	}
 }
