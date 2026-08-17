@@ -27,6 +27,7 @@ define( 'BALE_CONNECTOR_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 
 require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-installer.php';
 require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-security.php';
+require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-api-client.php';
 require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-admin.php';
 
 /**
@@ -97,3 +98,97 @@ function bale_connector_init() {
 	}
 }
 add_action( 'plugins_loaded', 'bale_connector_init' );
+
+/**
+ * Get the configured, ready-to-use Bale API client.
+ *
+ * Extension point for bale-connector-pro (AGENTS.md §7). Decrypts the stored
+ * bot token, instantiates Bale_Api_Client, and returns it. Returns WP_Error
+ * if no token is configured or the token cannot be decrypted.
+ *
+ * @return Bale_Api_Client|WP_Error API client instance, or WP_Error on failure.
+ */
+function bale_connector_get_client() {
+	$encrypted_token = get_option( 'bale_connector_bot_token_enc', '' );
+
+	if ( empty( $encrypted_token ) ) {
+		return new WP_Error(
+			'bale_no_token',
+			__( 'No Bale bot token is configured. Please set your token on the Settings page.', 'bale-connector' )
+		);
+	}
+
+	$token = Bale_Security::decrypt( $encrypted_token );
+
+	if ( null === $token ) {
+		return new WP_Error(
+			'bale_no_token',
+			__( 'No Bale bot token is configured. Please set your token on the Settings page.', 'bale-connector' )
+		);
+	}
+
+	if ( false === $token ) {
+		return new WP_Error(
+			'bale_token_decrypt_failed',
+			__( 'Unable to decrypt the stored bot token. The encryption key may have changed or been corrupted.', 'bale-connector' )
+		);
+	}
+
+	return new Bale_Api_Client( $token );
+}
+
+/**
+ * Register WP-CLI commands for debugging and testing.
+ */
+if ( defined( 'WP_CLI' ) && WP_CLI ) {
+	WP_CLI::add_command( 'bale', 'Bale_Connector_CLI' );
+}
+
+/**
+ * WP-CLI commands for the Bale Connector plugin.
+ *
+ * Usage: wp bale test-connection
+ * Acceptance test for Phase 2 — calls getMe() with the stored token.
+ */
+class Bale_Connector_CLI {
+
+	/**
+	 * Test the bot connection by calling getMe().
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp bale test-connection
+	 *
+	 * @subcommand test-connection
+	 */
+	public function test_connection( $args, $assoc_args ) {
+		$client = bale_connector_get_client();
+
+		if ( is_wp_error( $client ) ) {
+			WP_CLI::error( $client->get_error_message() );
+			return;
+		}
+
+		$result = $client->getMe();
+
+		if ( is_wp_error( $result ) ) {
+			$data = $result->get_error_data();
+			$msg  = $result->get_error_message();
+			if ( isset( $data['error_code'] ) ) {
+				$msg .= ' (error_code: ' . $data['error_code'] . ')';
+			}
+			WP_CLI::error( $msg );
+			return;
+		}
+
+		WP_CLI::success(
+			sprintf(
+				/* translators: 1: bot username, 2: bot id, 3: bot first name */
+				__( 'Connected to bot @%1$s (id: %2$s, name: %3$s)', 'bale-connector' ),
+				isset( $result['username'] ) ? $result['username'] : 'unknown',
+				isset( $result['id'] ) ? $result['id'] : 'unknown',
+				isset( $result['first_name'] ) ? $result['first_name'] : 'unknown'
+			)
+		);
+	}
+}
