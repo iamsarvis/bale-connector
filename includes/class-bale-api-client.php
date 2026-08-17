@@ -137,7 +137,13 @@ class Bale_Api_Client {
 	 * Send a photo.
 	 *
 	 * @param mixed  $chat_id    Integer or @username string.
-	 * @param mixed  $photo      File_id (string), HTTP URL (string), or local file path (string).
+	 * @param mixed  $photo      One of: a file_id (string), an HTTP URL (string),
+	 *                           or an ABSOLUTE filesystem path (string) to upload
+	 *                           via multipart/form-data. Relative paths are
+	 *                           unreliable — they resolve against PHP's cwd,
+	 *                           which differs between CLI, admin, and cron
+	 *                           contexts. Always pass realpath()-resolved paths
+	 *                           for uploads.
 	 * @param string $caption    Optional. Caption (0–1024 chars).
 	 * @param array  $args       Optional. Extra params.
 	 * @return array|WP_Error Sent message array on success, WP_Error on failure.
@@ -191,7 +197,13 @@ class Bale_Api_Client {
 	 * Send a document.
 	 *
 	 * @param mixed  $chat_id   Integer or @username string.
-	 * @param mixed  $document File_id (string), HTTP URL (string), or local file path (string).
+	 * @param mixed  $document One of: a file_id (string), an HTTP URL (string),
+	 *                          or an ABSOLUTE filesystem path (string) to upload
+	 *                          via multipart/form-data. Relative paths are
+	 *                          unreliable — they resolve against PHP's cwd,
+	 *                          which differs between CLI, admin, and cron
+	 *                          contexts. Always pass realpath()-resolved paths
+	 *                          for uploads.
 	 * @param string $caption   Optional. Caption (0–1024 chars).
 	 * @param array  $args      Optional. Extra params.
 	 * @return array|WP_Error Sent message array on success, WP_Error on failure.
@@ -593,6 +605,21 @@ class Bale_Api_Client {
 	 * http:// or https://. A local file path is anything else that exists on
 	 * the filesystem.
 	 *
+	 * The @ error-suppression operator on file_exists() is intentional: on
+	 * servers with open_basedir or safe_mode restrictions, file_exists() can
+	 * emit a PHP warning when the path falls outside the allowed directories.
+	 * file_id strings (which are opaque tokens, not real paths) can trigger
+	 * this. The suppression ensures no warning is ever logged or echoed —
+	 * we only care about the boolean return, not the diagnostic. The result
+	 * is correct in all cases: outside open_basedir -> false (not a file we
+	 * can upload), inside and exists -> true.
+	 *
+	 * Callers must pass absolute filesystem paths for real uploads. Relative
+	 * paths resolve against PHP's cwd, which varies between CLI, admin, and
+	 * cron contexts — a relative path that works in admin may silently fail
+	 * under Action Scheduler. Use realpath() before calling sendPhoto() or
+	 * sendDocument() with a file.
+	 *
 	 * @param string $value The photo/document parameter.
 	 * @return bool True if $value is a local file path.
 	 */
@@ -607,6 +634,7 @@ class Bale_Api_Client {
 		}
 
 		// file_id strings are opaque tokens, not file paths — they won't exist on disk.
-		return file_exists( $value );
+		// The @ suppresses open_basedir warnings on paths outside allowed dirs.
+		return @file_exists( $value );
 	}
 }
