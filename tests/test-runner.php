@@ -196,11 +196,19 @@ expect_true( ! empty( $sanitized ), 'Sanitization failed for valid token' );
 $decrypted_from_sanitized = Bale_Security::decrypt( $sanitized );
 expect_equals( $decrypted_from_sanitized, $test_token, 'Sanitized token decryption mismatch' );
 
+// 4b. Test Idempotency Guard (double sanitize / add_option fallback scenario)
+$mock_settings_errors = array();
+$double_sanitized = $admin->sanitize_bot_token( $sanitized );
+expect_equals( $double_sanitized, $sanitized, 'Re-sanitizing an already-encrypted ciphertext must return it unchanged' );
+expect_true( empty( $mock_settings_errors ), 'Idempotency guard should not produce settings errors' );
+$decrypted_after_double = Bale_Security::decrypt( $double_sanitized );
+expect_equals( $decrypted_after_double, $test_token, 'Decryption after double sanitize failed' );
+
 // Invalid token format check
 $mock_settings_errors = array();
 $invalid_sanitized = $admin->sanitize_bot_token( 'invalid_token_format' );
 expect_true( count( $mock_settings_errors ) > 0, 'Invalid token format was not rejected with error' );
-echo "[PASS] Bale_Admin sanitization verified.\n";
+echo "[PASS] Bale_Admin sanitization & idempotency guard verified.\n";
 
 // 5. Test requirements check
 expect_true( bale_connector_check_requirements() === true, 'Requirements check failed on valid environment' );

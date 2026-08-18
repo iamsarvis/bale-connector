@@ -99,6 +99,8 @@ CREATE TABLE {$form_settings_table} (
 	 * Set default options if not already present.
 	 */
 	private static function set_default_options() {
+		add_option( 'bale_connector_bot_token_enc', '', '', false );
+
 		if ( false === get_option( 'bale_connector_keep_data_on_uninstall' ) ) {
 			add_option( 'bale_connector_keep_data_on_uninstall', '1' );
 		}

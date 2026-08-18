@@ -159,6 +159,12 @@ class Bale_Admin {
 			return get_option( 'bale_connector_bot_token_enc', '' );
 		}
 
+		// Idempotency guard: if $raw_token is already encrypted ciphertext payload, preserve as-is
+		$decoded = base64_decode( $raw_token, true );
+		if ( false !== $decoded && ( 0 === strpos( $decoded, 'sodium:' ) || 0 === strpos( $decoded, 'openssl:' ) ) ) {
+			return $raw_token;
+		}
+
 		// Local format check: standard bot tokens have format <digits>:<alphanumeric/special>
 		if ( ! preg_match( '/^[0-9]+:[A-Za-z0-9_-]+$/', $raw_token ) ) {
 			add_settings_error(
