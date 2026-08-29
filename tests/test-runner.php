@@ -95,12 +95,29 @@ class WP_Error {
 }
 
 // Mock wp_remote_post and response helpers — captures the last request for assertions.
+// bale_mock_http_next_response: single response used for the next call (null = default ok:true).
+// bale_mock_http_queue: optional FIFO of responses consumed one per call (takes priority).
+// bale_mock_http_calls: log of every call (url + args) for call-order assertions.
 $GLOBALS['bale_mock_http_last_request'] = null;
 $GLOBALS['bale_mock_http_next_response'] = null;
+$GLOBALS['bale_mock_http_queue'] = null;
+$GLOBALS['bale_mock_http_calls'] = array();
+
+function wp_list_pluck( $list, $field ) {
+	$values = array();
+	foreach ( $list as $item ) {
+		$values[] = is_object( $item ) ? $item->$field : $item[ $field ];
+	}
+	return $values;
+}
 
 function wp_remote_post( $url, $args = array() ) {
-	global $bale_mock_http_last_request, $bale_mock_http_next_response;
+	global $bale_mock_http_last_request, $bale_mock_http_next_response, $bale_mock_http_queue, $bale_mock_http_calls;
+	$bale_mock_http_calls[] = array( 'url' => $url, 'args' => $args );
 	$bale_mock_http_last_request = array( 'url' => $url, 'args' => $args );
+	if ( is_array( $bale_mock_http_queue ) && count( $bale_mock_http_queue ) > 0 ) {
+		return array_shift( $bale_mock_http_queue );
+	}
 	if ( null === $bale_mock_http_next_response ) {
 		return array(
 			'headers'  => array( 'content-type' => 'application/json' ),
@@ -592,6 +609,184 @@ expect_true( $fail_test->get_error_code() !== 'bale_token_missing', 'chat not fo
 $updated_after_fail = Bale_Recipients::get( $channel_rec_id );
 expect_equals( $updated_after_fail['last_test_status'], 'failed', 'failed chat lookup should record status as failed' );
 echo "[PASS] test_connection(): Chat Not Found error handled separately from missing token.\n";
+
+// Test 8i-2: getChatMember() client method — request shape + error normalization
+$GLOBALS['bale_mock_http_next_response'] = array(
+	'headers'  => array( 'content-type' => 'application/json' ),
+	'body'     => '{"ok":true,"result":{"user":{"id":1246343443,"first_name":"room_manager_bot","username":"room_manager_bot"},"status":"member"}}',
+	'response' => array( 'code' => 200, 'message' => 'OK' ),
+);
+$GLOBALS['bale_mock_http_last_request'] = null;
+
+$member_result = $client->getChatMember( '-100987654321', 1246343443 );
+expect_true( ! is_wp_error( $member_result ), 'getChatMember should not return error on ok:true' );
+expect_equals( $member_result['status'], 'member', 'getChatMember result.status mismatch' );
+
+$last_req = $GLOBALS['bale_mock_http_last_request'];
+expect_equals( $last_req['url'], 'https://tapi.bale.ai/bot123456789:test_token_for_mocking/getChatMember', 'getChatMember URL mismatch' );
+expect_equals( $last_req['args']['headers']['Content-Type'], 'application/json', 'getChatMember should use JSON content-type' );
+$decoded_body = json_decode( $last_req['args']['body'], true );
+expect_equals( $decoded_body['chat_id'], '-100987654321', 'getChatMember body chat_id mismatch' );
+expect_equals( $decoded_body['user_id'], 1246343443, 'getChatMember body user_id mismatch' );
+
+// Non-numeric user_id must be rejected before any HTTP call.
+$GLOBALS['bale_mock_http_last_request'] = null;
+$bad_member_result = $client->getChatMember( '-100987654321', 'not-a-user-id' );
+expect_true( is_wp_error( $bad_member_result ), 'getChatMember should reject non-numeric user_id' );
+expect_equals( $bad_member_result->get_error_code(), 'invalid_user_id', 'getChatMember invalid user_id code mismatch' );
+expect_true( null === $GLOBALS['bale_mock_http_last_request'], 'getChatMember must not hit HTTP for invalid user_id' );
+
+// API failure (user not found) must normalize to WP_Error via build_wp_error().
+$GLOBALS['bale_mock_http_next_response'] = array(
+	'headers'  => array( 'content-type' => 'application/json' ),
+	'body'     => '{"ok":false,"error_code":400,"description":"Bad Request: user not found"}',
+	'response' => array( 'code' => 400, 'message' => 'Bad Request' ),
+);
+$member_fail = $client->getChatMember( '-100987654321', 1246343443 );
+expect_true( is_wp_error( $member_fail ), 'getChatMember should return WP_Error when user not found' );
+expect_equals( $member_fail->get_error_message(), 'Bad Request: user not found', 'getChatMember error description mismatch' );
+echo "[PASS] getChatMember(): request shape, user_id validation & error normalization verified.\n";
+
+// Test 8i-3: group recipient where bot IS a member (getChat + getChatMember both ok)
+// NOTE: test_connection() signature gains $recipient_type; existing user-type calls remain unchanged.
+$group_rec_id2 = Bale_Recipients::add( array(
+	'label'   => 'Dev Group Readded',
+	'chat_id' => '987654321',
+	'type'    => 'group',
+) );
+expect_true( is_int( $group_rec_id2 ) && $group_rec_id2 > 0, 'Re-adding group recipient should return valid integer ID' );
+
+$GLOBALS['bale_mock_http_next_response'] = null;
+// Queue: 1) getChat  2) getMe (bot identity, cached afterwards)  3) getChatMember.
+$GLOBALS['bale_mock_http_queue'] = array(
+	array(
+		'headers'  => array( 'content-type' => 'application/json' ),
+		'body'     => '{"ok":true,"result":{"id":987654321,"type":"group","title":"Dev Group"}}',
+		'response' => array( 'code' => 200, 'message' => 'OK' ),
+	),
+	array(
+		'headers'  => array( 'content-type' => 'application/json' ),
+		'body'     => '{"ok":true,"result":{"id":1246343443,"first_name":"room_manager_bot","username":"room_manager_bot"}}',
+		'response' => array( 'code' => 200, 'message' => 'OK' ),
+	),
+	array(
+		'headers'  => array( 'content-type' => 'application/json' ),
+		'body'     => '{"ok":true,"result":{"user":{"id":1246343443,"first_name":"room_manager_bot","username":"room_manager_bot"},"status":"member"}}',
+		'response' => array( 'code' => 200, 'message' => 'OK' ),
+	),
+);
+$GLOBALS['bale_mock_http_last_request'] = null;
+
+// Exactly 3 HTTP calls expected for this test: getChat, getMe, getChatMember.
+$calls_before_group_test = count( $GLOBALS['bale_mock_http_calls'] );
+$group_success = Bale_Recipients::test_connection( '987654321', $group_rec_id2, 'group' );
+expect_true( ! is_wp_error( $group_success ), 'group test_connection should succeed when bot is a member' );
+expect_equals( $group_success['title'], 'Dev Group', 'group test_connection chat title mismatch' );
+
+$group_flow_calls = array_slice( $GLOBALS['bale_mock_http_calls'], $calls_before_group_test );
+expect_equals( count( $group_flow_calls ), 3, 'group success flow should make exactly 3 HTTP calls (getChat, getMe, getChatMember)' );
+$first_call_url  = $group_flow_calls[0]['url'];
+$second_call_url = $group_flow_calls[1]['url'];
+$third_call_url  = $group_flow_calls[2]['url'];
+expect_true( false !== strpos( $first_call_url, '/getChat' ), 'first call must be getChat' );
+expect_true( false !== strpos( $second_call_url, '/getMe' ), 'second call must be getMe' );
+expect_true( false !== strpos( $third_call_url, '/getChatMember' ), 'third call must be getChatMember' );
+$third_call_body = json_decode( $group_flow_calls[2]['args']['body'], true );
+expect_equals( $third_call_body['user_id'], 1246343443, 'getChatMember must be called with bot own user_id from getMe' );
+
+$updated_group_success = Bale_Recipients::get( $group_rec_id2 );
+expect_equals( $updated_group_success['last_test_status'], 'success', 'group success should record last_test_status as success' );
+echo "[PASS] test_connection(): group/channel with bot as member — getChat + getMe (cached) + getChatMember all pass.\n";
+
+// Test 8i-4: getMe() is cached per request — a second group test in the same request
+// must NOT call getMe again (2 HTTP calls: getChat + getChatMember).
+$GLOBALS['bale_mock_http_queue'] = array(
+	array(
+		'headers'  => array( 'content-type' => 'application/json' ),
+		'body'     => '{"ok":true,"result":{"id":987654321,"type":"group","title":"Dev Group"}}',
+		'response' => array( 'code' => 200, 'message' => 'OK' ),
+	),
+	array(
+		'headers'  => array( 'content-type' => 'application/json' ),
+		'body'     => '{"ok":true,"result":{"user":{"id":1246343443,"first_name":"room_manager_bot","username":"room_manager_bot"},"status":"member"}}',
+		'response' => array( 'code' => 200, 'message' => 'OK' ),
+	),
+);
+$GLOBALS['bale_mock_http_last_request'] = null;
+
+$group_success_cached = Bale_Recipients::test_connection( '987654321', $group_rec_id2, 'group' );
+expect_true( ! is_wp_error( $group_success_cached ), 'second group test_connection should succeed with cached bot id' );
+$cached_flow_calls = array_slice( $GLOBALS['bale_mock_http_calls'], $calls_before_group_test + 3 );
+expect_equals( count( $cached_flow_calls ), 2, 'cached flow should make exactly 2 HTTP calls (no second getMe)' );
+expect_true( false === strpos( $cached_flow_calls[0]['url'], '/getMe' ) && false === strpos( $cached_flow_calls[1]['url'], '/getMe' ), 'no getMe call should occur when bot id is cached' );
+echo "[PASS] test_connection(): bot user_id from getMe() cached for the request duration (no duplicate getMe).\n";
+
+// Test 8i-5: group recipient where bot is NOT a member (getChat ok, getChatMember fails)
+$GLOBALS['bale_mock_http_queue'] = array(
+	array(
+		'headers'  => array( 'content-type' => 'application/json' ),
+		'body'     => '{"ok":true,"result":{"id":987654321,"type":"group","title":"Dev Group"}}',
+		'response' => array( 'code' => 200, 'message' => 'OK' ),
+	),
+	array(
+		'headers'  => array( 'content-type' => 'application/json' ),
+		'body'     => '{"ok":false,"error_code":400,"description":"Bad Request: participant user is not found"}',
+		'response' => array( 'code' => 400, 'message' => 'Bad Request' ),
+	),
+);
+$GLOBALS['bale_mock_http_last_request'] = null;
+
+$group_not_member = Bale_Recipients::test_connection( '987654321', $group_rec_id2, 'group' );
+expect_true( is_wp_error( $group_not_member ), 'group test_connection should fail when bot is not a member' );
+expect_equals( $group_not_member->get_error_code(), 'bale_bot_not_member', 'bot-not-member error code mismatch' );
+expect_equals(
+	$group_not_member->get_error_message(),
+	'This chat_id is valid, but the bot is not currently a member of this group/channel — please add it first.',
+	'bot-not-member error message mismatch'
+);
+
+$updated_group_fail = Bale_Recipients::get( $group_rec_id2 );
+expect_equals( $updated_group_fail['last_test_status'], 'failed', 'bot-not-member should record last_test_status as failed' );
+echo "[PASS] test_connection(): chat valid but bot not a member returns distinct actionable error.\n";
+
+// Test 8i-6: channel recipient behaves the same as group (membership check enforced).
+$GLOBALS['bale_mock_http_queue'] = array(
+	array(
+		'headers'  => array( 'content-type' => 'application/json' ),
+		'body'     => '{"ok":true,"result":{"id":"@bale_news_channel","type":"channel","title":"News Channel","username":"bale_news_channel"}}',
+		'response' => array( 'code' => 200, 'message' => 'OK' ),
+	),
+	array(
+		'headers'  => array( 'content-type' => 'application/json' ),
+		'body'     => '{"ok":false,"error_code":400,"description":"Bad Request: participant user is not found"}',
+		'response' => array( 'code' => 400, 'message' => 'Bad Request' ),
+	),
+);
+
+$channel_not_member = Bale_Recipients::test_connection( '@bale_news_channel', $channel_rec_id, 'channel' );
+expect_true( is_wp_error( $channel_not_member ), 'channel test_connection should enforce bot membership too' );
+expect_equals( $channel_not_member->get_error_code(), 'bale_bot_not_member', 'channel bot-not-member error code mismatch' );
+echo "[PASS] test_connection(): channel type enforces bot membership identically to group.\n";
+
+// Test 8i-7: user-type behavior is unchanged — getChat-only, no getMe/getChatMember calls.
+$GLOBALS['bale_mock_http_next_response'] = array(
+	'headers'  => array( 'content-type' => 'application/json' ),
+	'body'     => '{"ok":true,"result":{"id":1246343444,"type":"private","first_name":"Sobhan","username":"sobhan_dev"}}',
+	'response' => array( 'code' => 200, 'message' => 'OK' ),
+);
+$calls_before_user_test = count( $GLOBALS['bale_mock_http_calls'] );
+$GLOBALS['bale_mock_http_last_request'] = null;
+
+$user_success = Bale_Recipients::test_connection( '1246343444', $user_rec_id, 'user' );
+expect_true( ! is_wp_error( $user_success ), 'user test_connection should succeed on ok:true' );
+expect_equals( $user_success['username'], 'sobhan_dev', 'user test_connection username mismatch' );
+
+$calls_after_user_test = array_slice( $GLOBALS['bale_mock_http_calls'], $calls_before_user_test );
+expect_equals( count( $calls_after_user_test ), 1, 'user type must make exactly one HTTP call (getChat only)' );
+expect_true( false !== strpos( $calls_after_user_test[0]['url'], '/getChat' ), 'user type call must be getChat' );
+$updated_user_unchanged = Bale_Recipients::get( $user_rec_id );
+expect_equals( $updated_user_unchanged['last_test_status'], 'success', 'user type success should record last_test_status as success' );
+echo "[PASS] test_connection(): user-type behavior unchanged — getChat-only, no membership check.\n";
 
 // Test 8j: Server-side recipient lookup in ajax_test_recipient_connection()
 // Prepare $_POST payload (notice chat_id is not passed by client, only recipient_id)

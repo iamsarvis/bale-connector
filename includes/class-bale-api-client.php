@@ -110,6 +110,42 @@ class Bale_Api_Client {
 	}
 
 	/**
+	 * Get information about a member of a chat.
+	 *
+	 * Source: python-bale-bot library documentation (which wraps the real Bale
+	 * Bot API) — getChatMember(chat_id, user_id) returns a ChatMember object
+	 * with a status field, and raises a NotFound-equivalent error if the chat
+	 * or the user is not found.
+	 *
+	 * Used by Bale_Recipients::test_connection() to verify the bot itself is a
+	 * member of a group/channel: a chat resolvable via getChat() does not
+	 * guarantee the bot can post to it.
+	 *
+	 * @param mixed $chat_id Integer or @username string.
+	 * @param mixed $user_id Numeric user ID to look up inside the chat.
+	 * @return array|WP_Error ChatMember array on success, WP_Error on failure.
+	 */
+	public function getChatMember( $chat_id, $user_id ) {
+		$valid = $this->validate_chat_id( $chat_id );
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
+		}
+
+		if ( ! is_numeric( $user_id ) ) {
+			return new WP_Error(
+				'invalid_user_id',
+				__( 'user_id is required and must be numeric.', 'bale-connector' ),
+				array( 'user_id' => $user_id )
+			);
+		}
+
+		return $this->request( 'getChatMember', array(
+			'chat_id' => $chat_id,
+			'user_id' => (int) $user_id,
+		) );
+	}
+
+	/**
 	 * Send a text message.
 	 *
 	 * @param mixed  $chat_id Integer or @username string.

@@ -451,7 +451,9 @@ class Bale_Admin {
 
 		$chat_id = $recipient['chat_id'];
 
-		$result = Bale_Recipients::test_connection( $chat_id, $recipient_id );
+		$recipient_type = isset( $recipient['type'] ) ? $recipient['type'] : '';
+
+		$result = Bale_Recipients::test_connection( $chat_id, $recipient_id, $recipient_type );
 
 		if ( is_wp_error( $result ) ) {
 			wp_send_json_error( array(

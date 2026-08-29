@@ -298,14 +298,24 @@ class Bale_Recipients {
 	 * 1. Missing bot token (WP_Error from bale_connector_get_client()): returns explicit message.
 	 * 2. Invalid chat_id format: returns validation error.
 	 * 3. Chat lookup errors (e.g. Chat Not Found, bot not started/added).
+	 * 4. Group/channel recipients: after getChat() succeeds, getChatMember()
+	 *    verifies the bot itself is a member — a resolvable chat does not
+	 *    guarantee the bot can post to it.
+	 *
+	 * For 'user' recipients only getChat() runs: there is no reliable way to
+	 * confirm a private user has started the bot (Bale's getChatMember()
+	 * semantics for private chats are not documented, and probing
+	 * non-members would produce misleading "not found" failures).
 	 *
 	 * Updates the recipient's test status in DB if recipient ID is provided.
 	 *
 	 * @param string   $chat_id      Chat ID or username.
 	 * @param int|null $recipient_id Optional recipient ID to record test status.
+	 * @param string   $recipient_type Optional recipient type ('user', 'group', 'channel').
+	 *                                 Group/channel types additionally verify bot membership.
 	 * @return array|WP_Error Chat info array on success, WP_Error on failure.
 	 */
-	public static function test_connection( $chat_id, $recipient_id = null ) {
+	public static function test_connection( $chat_id, $recipient_id = null, $recipient_type = '' ) {
 		$client = bale_connector_get_client();
 
 		if ( is_wp_error( $client ) ) {
@@ -336,10 +346,69 @@ class Bale_Recipients {
 			return $result;
 		}
 
+		// Group/channel: verify the bot itself is a member via getChatMember().
+		if ( 'group' === $recipient_type || 'channel' === $recipient_type ) {
+			$bot_member_result = self::verify_bot_membership( $client, $chat_id );
+
+			if ( is_wp_error( $bot_member_result ) ) {
+				if ( $recipient_id ) {
+					self::update_test_status( $recipient_id, 'failed' );
+				}
+				return $bot_member_result;
+			}
+		}
+
 		if ( $recipient_id ) {
 			self::update_test_status( $recipient_id, 'success' );
 		}
 
 		return $result;
+	}
+
+	/**
+	 * Verify the bot is a member of the given chat via getChatMember().
+	 *
+	 * Calls getMe() once (per-request static cache) to obtain the bot's own
+	 * user ID, then asks the API whether that user is a member of $chat_id.
+	 *
+	 * @param Bale_Api_Client $client  Configured API client.
+	 * @param string          $chat_id Chat ID or username.
+	 * @return true|WP_Error True if the bot is a member, WP_Error on failure.
+	 */
+	private static function verify_bot_membership( $client, $chat_id ) {
+		static $bot_user_id = null;
+
+		if ( null === $bot_user_id ) {
+			$me = $client->getMe();
+
+			if ( is_wp_error( $me ) ) {
+				return new WP_Error(
+					'bale_getme_failed',
+					__( 'Could not verify the bot identity (getMe failed): ', 'bale-connector' ) . $me->get_error_message(),
+					array( 'wp_error' => $me )
+				);
+			}
+
+			$bot_user_id = isset( $me['id'] ) ? $me['id'] : 0;
+		}
+
+		if ( empty( $bot_user_id ) ) {
+			return new WP_Error(
+				'bale_getme_failed',
+				__( 'Could not determine the bot user ID (getMe returned no id).', 'bale-connector' )
+			);
+		}
+
+		$member = $client->getChatMember( $chat_id, $bot_user_id );
+
+		if ( is_wp_error( $member ) ) {
+			return new WP_Error(
+				'bale_bot_not_member',
+				__( 'This chat_id is valid, but the bot is not currently a member of this group/channel — please add it first.', 'bale-connector' ),
+				array( 'api_error' => $member->get_error_message() )
+			);
+		}
+
+		return true;
 	}
 }
