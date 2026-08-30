@@ -29,7 +29,14 @@ require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-installer.php';
 require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-security.php';
 require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-api-client.php';
 require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-recipients.php';
+require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-logger.php';
+require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-template.php';
+require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-cf7-form-settings.php';
+require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-cf7-integration.php';
+require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-cf7-admin-panel.php';
 require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-admin.php';
+
+define( 'BALE_CONNECTOR_LIB_DIR', BALE_CONNECTOR_PLUGIN_DIR . 'lib/' );
 
 /**
  * Register activation and deactivation hooks.
@@ -92,6 +99,16 @@ function bale_connector_init() {
 	}
 
 	load_plugin_textdomain( 'bale-connector', false, dirname( BALE_CONNECTOR_PLUGIN_BASENAME ) . '/languages/' );
+
+	require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-action-scheduler-loader.php';
+
+	// Load the bundled Action Scheduler via the library's own hooked,
+	// version-negotiating bootstrap (see class docblock). Safe alongside
+	// WooCommerce or a standalone Action Scheduler plugin.
+	Bale_Action_Scheduler_Loader::init();
+
+	$cf7_integration = new Bale_CF7_Integration();
+	$cf7_integration->register();
 
 	if ( is_admin() ) {
 		$admin = new Bale_Admin();
@@ -156,6 +173,77 @@ function bale_connector_recipients( $args = array() ) {
 	 * @param array $args       Query arguments.
 	 */
 	return apply_filters( 'bale_connector_recipients', $recipients, $args );
+}
+
+/**
+ * Register a new trigger type (AGENTS.md §7 extension point).
+ *
+ * Lets bale-connector-pro add-ons register a new trigger type (order status,
+ * OTP, etc.) into the shared admin UI and the shared log table, without
+ * modifying this repo's code.
+ *
+ * @param string $slug Unique trigger slug (becomes the log source_type).
+ * @param array  $args Trigger definition (label, callback, source_ref).
+ * @return true|WP_Error True on success, WP_Error on invalid input.
+ */
+function bale_connector_register_trigger( $slug, $args ) {
+	/**
+	 * Filter a trigger registration before it is stored.
+	 *
+	 * @param true|WP_Error $result Registration result.
+	 * @param string        $slug   Trigger slug.
+	 * @param array         $args   Trigger arguments.
+	 */
+	$result = Bale_Logger::register_trigger( $slug, $args );
+
+	return apply_filters( 'bale_connector_register_trigger_result', $result, $slug, $args );
+}
+
+/**
+ * Write an entry into the shared logs table.
+ *
+ * Extension point for bale-connector-pro (AGENTS.md §7): the single write
+ * path into the logs table, so Pro triggers reuse the exact same log/report
+ * UI as CF7 does.
+ *
+ * @param array $entry {
+ *     Log entry.
+ *
+ *     @type string $source_type       'cf7' or a registered trigger slug.
+ *     @type string $source_ref        Optional. Form ID, order ID, etc.
+ *     @type string $recipient_chat_id Target chat ID.
+ *     @type mixed  $payload           JSON-encodable data that was sent.
+ *     @type mixed  $response          Optional. JSON-encodable response data.
+ *     @type string $status            'success' or 'failed'.
+ * }
+ * @return int|WP_Error Inserted log ID on success, WP_Error on failure.
+ */
+function bale_connector_log( $entry ) {
+	/**
+	 * Filter a log entry before it is written.
+	 *
+	 * @param array $entry Log entry (source_type, source_ref,
+	 *                     recipient_chat_id, payload, response, status).
+	 */
+	$entry = apply_filters( 'bale_connector_log_entry', $entry );
+
+	return Bale_Logger::log( $entry );
+}
+
+/**
+ * Render a message template with submitted field values.
+ *
+ * Public so Pro form-builder add-ons reuse the exact Phase 4 template and
+ * escaping engine. Submitted values are always escaped to literal plain
+ * text; only admin-authored template text may use Bale formatting.
+ *
+ * @param string $template     Admin-authored template with [tags].
+ * @param array  $field_values Submitted field values (tag => value).
+ * @param array  $extra_tags   Optional. Trusted site-owner tag values.
+ * @return string Rendered message text.
+ */
+function bale_connector_render_template( $template, $field_values, $extra_tags = array() ) {
+	return Bale_Template::render( $template, $field_values, $extra_tags );
 }
 
 /**

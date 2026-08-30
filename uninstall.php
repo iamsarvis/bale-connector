@@ -14,6 +14,15 @@ $keep_data = get_option( 'bale_connector_keep_data_on_uninstall', '1' );
 if ( '1' !== $keep_data ) {
 	global $wpdb;
 
+	// Cancel any pending queued sends before dropping tables.
+	if ( class_exists( 'ActionScheduler' ) ) {
+		try {
+			ActionScheduler_Store::instance()->cancel_actions_by_group( 'bale-connector' );
+		} catch ( Exception $e ) { // phpcs:ignore WordPress.CodeAnalysis.AssignmentInCondition -- best-effort cleanup during uninstall.
+			// Store may already be unavailable during uninstall; ignore.
+		}
+	}
+
 	// Drop custom tables
 	$recipients_table    = $wpdb->prefix . 'bale_connector_recipients';
 	$logs_table          = $wpdb->prefix . 'bale_connector_logs';

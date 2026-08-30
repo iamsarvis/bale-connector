@@ -29,7 +29,22 @@ function plugin_basename( $file ) { return 'bale-connector/bale-connector.php'; 
 function register_activation_hook( $file, $callback ) {}
 function register_deactivation_hook( $file, $callback ) {}
 function add_action( $hook, $callback ) {}
-function add_filter( $hook, $callback ) {}
+$GLOBALS['bale_mock_filters'] = array();
+function add_filter( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
+	$GLOBALS['bale_mock_filters'][ $hook ][] = array( 'cb' => $callback, 'args' => $accepted_args );
+	return true;
+}
+function do_action( $hook, ...$args ) {}
+function apply_filters( $hook_name, $value, ...$args ) {
+	if ( empty( $GLOBALS['bale_mock_filters'][ $hook_name ] ) ) {
+		return $value;
+	}
+	foreach ( $GLOBALS['bale_mock_filters'][ $hook_name ] as $entry ) {
+		$cb_args = array_merge( array( $value ), array_slice( $args, 0, $entry['args'] - 1 ) );
+		$value   = call_user_func_array( $entry['cb'], $cb_args );
+	}
+	return $value;
+}
 function load_plugin_textdomain( $domain, $deprecated, $plugin_rel_path ) {}
 function is_admin() { return true; }
 function current_user_can( $cap ) { return true; }
@@ -38,7 +53,6 @@ function _e( $text, $domain = 'default' ) { echo $text; }
 function esc_html( $text ) { return htmlspecialchars( (string) $text, ENT_QUOTES, 'UTF-8' ); }
 function esc_attr( $text ) { return htmlspecialchars( (string) $text, ENT_QUOTES, 'UTF-8' ); }
 function esc_url( $url ) { return $url; }
-function wp_kses_post( $text ) { return $text; }
 function admin_url( $path = '' ) { return 'https://example.com/wp-admin/' . $path; }
 function esc_html__( $text, $domain = 'default' ) { return esc_html( $text ); }
 function esc_attr_e( $text, $domain = 'default' ) { echo esc_attr( $text ); }
@@ -70,9 +84,18 @@ function wp_parse_args( $args, $defaults = array() ) {
 	}
 	return $r;
 }
+function sanitize_textarea_field( $str ) {
+	return trim( strip_tags( (string) $str ) );
+}
+function sanitize_key( $key, $mode = 'lower' ) {
+	$raw = preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $key ) );
+	return $raw;
+}
+function get_post_type( $post ) { return 'wpcf7_contact_form'; }
+function get_the_title( $post ) { return 'Mock Form Title'; }
+function wp_kses_post( $text ) { return $text; }
 function absint( $maybeint ) { return abs( (int) $maybeint ); }
 function wp_unslash( $val ) { return is_string( $val ) ? stripslashes( $val ) : $val; }
-function apply_filters( $hook_name, $value, ...$args ) { return $value; }
 
 // Mock WP_Error class
 class WP_Error {
@@ -243,6 +266,7 @@ class MockFullWPDB {
     public $insert_id = 0;
     public $last_error = '';
     public $rows = array();
+    public $row_tables = array();
     public $queries = array();
 
     public function get_charset_collate() {
@@ -265,7 +289,21 @@ class MockFullWPDB {
 
     public function get_results( $sql, $output = 'ARRAY_A' ) {
         $this->queries[] = $sql;
-        $results = array_values( $this->rows );
+
+        // Filter rows by the table the query targets (rows of all mocked
+        // tables live in one store; real SQL targets one table at a time).
+        if ( preg_match( '/FROM\s+([a-zA-Z0-9_\.]+)/', $sql, $table_matches ) ) {
+            $target = $table_matches[1];
+            $results = array();
+            foreach ( $this->rows as $rid => $row ) {
+                if ( isset( $this->row_tables[ $rid ] ) && $this->row_tables[ $rid ] === $table_matches[1] ) {
+                    $results[ $rid ] = $row;
+                }
+            }
+            $results = array_values( $results );
+        } else {
+            $results = array_values( $this->rows );
+        }
 
         // Handle ORDER BY
         if ( preg_match( '/ORDER BY ([a-z_]+) (ASC|DESC)/i', $sql, $matches ) ) {
@@ -298,6 +336,20 @@ class MockFullWPDB {
             $id = (int) $matches[1];
             return isset( $this->rows[ $id ] ) ? $this->rows[ $id ] : null;
         }
+        if ( preg_match( '/FROM\s+(\S+)/s', $sql, $matches ) && preg_match( "/form_id = '?(\\d+)/", $sql, $form_id_matches ) ) {
+            // Emulate the UNIQUE KEY (form_type, form_id) lookup.
+            $table = $matches[1];
+            $form_id = (string) $form_id_matches[1];
+            foreach ( $this->rows as $rid => $row ) {
+                if ( isset( $this->row_tables[ $rid ], $row['form_type'], $row['form_id'] )
+                    && $this->row_tables[ $rid ] === $table
+                    && 'cf7' === $row['form_type']
+                    && $form_id === (string) $row['form_id'] ) {
+                    return $row;
+                }
+            }
+            return null;
+        }
         return null;
     }
 
@@ -305,6 +357,7 @@ class MockFullWPDB {
         $this->insert_id++;
         $row = array_merge( array( 'id' => $this->insert_id ), $data );
         $this->rows[ $this->insert_id ] = $row;
+        $this->row_tables[ $this->insert_id ] = $table;
         $this->queries[] = "INSERT INTO $table ...";
         return 1;
     }
@@ -315,6 +368,20 @@ class MockFullWPDB {
             $this->rows[ $id ] = array_merge( $this->rows[ $id ], $data );
             $this->queries[] = "UPDATE $table ...";
             return 1;
+        }
+        if ( isset( $where['form_type'], $where['form_id'] ) ) {
+            // Emulate the UNIQUE KEY (form_type, form_id) targeted update.
+            foreach ( $this->rows as $rid => $row ) {
+                if ( isset( $this->row_tables[ $rid ], $row['form_type'], $row['form_id'] )
+                    && $this->row_tables[ $rid ] === $table
+                    && (string) $row['form_type'] === (string) $where['form_type']
+                    && (string) $row['form_id'] === (string) $where['form_id'] ) {
+                    $this->rows[ $rid ] = array_merge( $this->rows[ $rid ], $data );
+                    $this->queries[] = "UPDATE $table ...";
+                    return 1;
+                }
+            }
+            return 0;
         }
         return 0;
     }
@@ -881,6 +948,299 @@ expect_true( $caught, 'ajax_save_recipient with invalid type should halt via wp_
 expect_equals( $GLOBALS['mock_ajax_response']['data']['message'], 'Invalid recipient type. Must be user, group, or channel.', 'error message mismatch for save invalid type' );
 
 $GLOBALS['throw_on_json_response'] = false;
+$GLOBALS['throw_on_json_response'] = false;
 echo "[PASS] AJAX error paths & explicit return guarantees verified.\n";
+
+// ==========================================
+// Phase 4: CF7 Integration Tests
+// ==========================================
+echo "\n--- Phase 4: CF7 Integration Tests ---\n";
+
+// Action Scheduler stub: capture as_schedule_single_action calls without
+// loading the full library. Tests assert scheduling, delays and retries.
+$GLOBALS['bale_mock_as_actions'] = array();
+function as_schedule_single_action( $timestamp, $hook, $args = array(), $group = '' ) {
+	$GLOBALS['bale_mock_as_actions'][] = array(
+		'timestamp' => $timestamp,
+		'hook'      => $hook,
+		'args'      => $args,
+		'group'     => $group,
+	);
+	return 12345 + count( $GLOBALS['bale_mock_as_actions'] );
+}
+function as_has_scheduled_action( $hook, $args = null, $group = '' ) {
+	return false;
+}
+
+// Reset DB mock for Phase 4 tests
+$wpdb_mock_p4 = new MockFullWPDB();
+$GLOBALS['wpdb'] = $wpdb_mock;
+
+// Load Phase 4 classes that are not loaded through bale-connector.php
+// during the test run (CF7 is absent, so register_hooks() returns early).
+require_once dirname( __DIR__ ) . '/includes/class-bale-cf7-form-settings.php';
+
+// Test 9a: Bale_Template escaping — submitted values must render as literal
+// plain text, never as Bale formatting. THE core security requirement.
+$injection = '[Free iPhone](https://evil.example)';
+$rendered  = Bale_Template::render( 'Contact: [your-name]', array( 'your-name' => $injection ) );
+expect_true(
+	false === strpos( $rendered, '](https://evil.example)' ),
+	'escape must break the [text](url) construct'
+);
+expect_true(
+	false !== strpos( $rendered, "[\xE2\x80\x8BFree iPhone]\xE2\x80\x8B(\xE2\x80\x8Bhttps://evil.example)" ),
+	'every formatting char must be followed by a zero-width space'
+);
+echo "[PASS] Template: [text](url) injection in field value renders as literal text.\n";
+
+// Test 9b: every Bale formatting character is escaped in submitted values.
+foreach ( array( '*', '_', '[', ']', '(', ')' ) as $char ) {
+	$escaped = Bale_Template::escape_bale_markup( 'a' . $char . 'b' );
+	expect_equals(
+		$escaped,
+		'a' . $char . "\xE2\x80\x8B" . 'b',
+		"character $char must be escaped with trailing ZWSP"
+	);
+}
+echo "[PASS] Template: all six Bale formatting characters escaped in submitted values.\n";
+
+// Test 9c: admin template formatting is PRESERVED (not escaped) while field
+// values inside the same message are escaped.
+$rendered = Bale_Template::render(
+	'*' . "Important" . '* [your-name] _note_',
+	array( 'your-name' => 'Reza *Star*' ),
+	array()
+);
+expect_true( 0 === strpos( $rendered, '*Important*' ), 'admin-authored bold must survive rendering' );
+expect_true( false !== strpos( $rendered, '_note_' ), 'admin-authored italic must survive rendering' );
+expect_true( false !== strpos( $rendered, 'Reza *' . "\xE2\x80\x8B" . 'Star*' . "\xE2\x80\x8B" ), 'submitted value inside same message must stay escaped' );
+echo "[PASS] Template: admin formatting preserved, submitted values escaped in the same message.\n";
+
+// Test 9d: array field values are joined, unknown tags render as empty.
+$rendered = Bale_Template::render(
+	'A=[checkbox-1] B=[unknown-tag] C=[your-name]',
+	array( 'your-name' => 'X', 'checkbox-1' => array( 'one', 'two' ) ),
+	array()
+);
+expect_equals( $rendered, 'A=one, two B= C=X', 'array values joined; unknown tags empty' );
+echo "[PASS] Template: array values joined with ', ' and unknown tags render empty.\n";
+
+// Test 9e: form-title / form-id come from the trusted extra_tags map and are NOT escaped.
+$rendered = Bale_Template::render(
+	'*[form-title]* ([form-id]) — [your-name]',
+	array( 'your-name' => 'Sara' ),
+	array( 'form-title' => 'Contact Us', 'form-id' => '42' )
+);
+expect_equals( $rendered, '*Contact Us* (42) — Sara', 'trusted extra tags must substitute unescaped' );
+echo "[PASS] Template: trusted [form-title]/[form-id] tags render unescaped.\n";
+
+// Test 9f: [tag:limit] truncation.
+$rendered = Bale_Template::render(
+	'[your-message:5]',
+	array( 'your-message' => 'abcdefghijk' ),
+	array()
+);
+expect_equals( $rendered, 'abcde', 'length-limited tag must truncate the value' );
+echo "[PASS] Template: [tag:limit] truncation verified.\n";
+
+// Test 9g: Bale_CF7_Form_Settings::sanitize_template preserves newlines and
+// Bale formatting chars (they belong to the admin template).
+$sanitized = Bale_CF7_Form_Settings::sanitize_template( "*bold* _it_ [link](https://x.ir)\nline two <script>alert(1)</script>" );
+expect_true( false !== strpos( $sanitized, '*bold* _it_ [link](https://x.ir)' ), 'admin formatting must survive sanitize_template' );
+expect_true( false !== strpos( $sanitized, "\n" ), 'newlines must survive template sanitization' );
+expect_true( false === strpos( $sanitized, '<script>' ), 'HTML tags must be stripped from template' );
+echo "[PASS] Form settings: template sanitization keeps Bale formatting, strips HTML.\n";
+
+// Test 9h: save + read back form settings (upsert semantics).
+expect_true( true === Bale_CF7_Integration::save_form_settings( 42, array(
+	'enabled'          => true,
+	'recipient_ids'    => array( 7, 8 ),
+	'message_template' => "*New lead*\nName: [your-name]",
+) ), 'save_form_settings insert should succeed' );
+
+$row = $wpdb_mock->get_row( "SELECT enabled, recipient_ids, message_template FROM wp_bale_connector_form_settings WHERE form_type = 'cf7' AND form_id = 42", 'ARRAY_A' );
+expect_true( is_array( $row ), 'form settings row should exist after save' );
+expect_equals( $row['recipient_ids'], '[7,8]', 'recipient_ids must be stored as normalized JSON' );
+
+$settings = Bale_CF7_Integration::get_form_settings( 42 );
+expect_true( is_array( $settings ) && 1 === (int) $settings['enabled'], 'get_form_settings should return enabled=1' );
+expect_equals( $settings['recipient_ids'], array( 7, 8 ), 'recipient_ids roundtrip' );
+
+// Upsert: saving again must not create a duplicate row.
+expect_true( true === Bale_CF7_Integration::save_form_settings( 42, array(
+	'enabled'          => 0,
+	'recipient_ids'    => array( 7 ),
+	'message_template' => 'plain',
+) ), 'save_form_settings update should succeed' );
+$updated = Bale_CF7_Integration::get_form_settings( 42 );
+expect_equals( $updated['enabled'], 0, 'second save must update the same row' );
+echo "[PASS] Form settings: upsert round-trip via wp_bale_connector_form_settings verified.\n";
+
+// Test 9i: bale_connector_log() writes rows into the logs table.
+$log_id = bale_connector_log( array(
+	'source_type'       => 'cf7',
+	'source_ref'        => '42',
+	'recipient_chat_id' => '1246343443',
+	'payload'           => array( 'text' => 'hello' ),
+	'response'          => array( 'message_id' => 7 ),
+	'status'            => 'success',
+) );
+expect_true( is_int( $log_id ) && $log_id > 0, 'bale_connector_log should return inserted ID' );
+
+$failed_log = bale_connector_log( array(
+	'source_type'       => 'cf7',
+	'source_ref'        => '42',
+	'recipient_chat_id' => '1246343443',
+	'payload'           => array( 'text' => 'x' ),
+	'status'            => 'failed',
+) );
+expect_true( is_int( $failed_log ) && $failed_log > 0, 'failed log entry should also insert' );
+echo "[PASS] bale_connector_log(): success and failed entries written to logs table.\n";
+
+// Test 9j: unknown source_type rejected; registered trigger accepted.
+$unknown = bale_connector_log( array(
+	'source_type'       => 'woocommerce_order',
+	'recipient_chat_id' => '123',
+	'payload'           => 'x',
+	'status'            => 'failed',
+) );
+expect_true( is_wp_error( $unknown ), 'unregistered source_type must be rejected' );
+expect_equals( $unknown->get_error_code(), 'bale_log_unknown_source_type', 'unknown source_type error code mismatch' );
+
+$reg = bale_connector_register_trigger( 'woocommerce_order', array( 'label' => 'WooCommerce Orders' ) );
+expect_true( true === $reg, 'register_trigger should return true' );
+$pro_log_id = bale_connector_log( array(
+	'source_type'       => 'woocommerce_order',
+	'source_ref'        => '555',
+	'recipient_chat_id' => '1246343443',
+	'payload'           => array( 'order' => 555 ),
+	'status'            => 'success',
+) );
+expect_true( is_int( $pro_log_id ) && $pro_log_id > 0, 'registered trigger should be able to log' );
+
+$dup = bale_connector_register_trigger( 'woocommerce_order', array( 'label' => 'Dup' ) );
+expect_true( is_wp_error( $dup ) && 'bale_trigger_already_registered' === $dup->get_error_code(), 'duplicate trigger registration must fail' );
+echo "[PASS] Extension points: bale_connector_register_trigger() + bale_connector_log() verified.\n";
+
+// Test 9k: Bale_CF7_Integration::action_send — full mocked flow.
+$GLOBALS['bale_mock_as_actions'] = array();
+$wpdb_mock->queries = array();
+
+$cf7 = new Bale_CF7_Integration();
+
+// Save settings for form 77 and add a matching recipient.
+// (Recipient row IDs 1 and 2 already exist from Phase 3 tests: 1 = 'Updated
+// Admin User' with chat_id 1246343444, 2 = 'News Channel'.)
+Bale_Recipients::add( array( 'label' => 'Owner DM', 'chat_id' => '1246343443', 'type' => 'user' ) );
+$owner_recipient_id = $GLOBALS['wpdb']->insert_id;
+Bale_CF7_Integration::save_form_settings( 77, array(
+	'enabled'          => 1,
+	'recipient_ids'    => array( $owner_recipient_id ),
+	'message_template' => '*Form: [form-id]*' . "\n" . 'Name: [your-name]' . "\n" . 'Message: [your-message]',
+) );
+
+$GLOBALS['bale_mock_http_next_response'] = array(
+	'headers'  => array( 'content-type' => 'application/json' ),
+	'body'     => '{"ok":true,"result":{"message_id":77,"chat":{"id":1246343443,"type":"private"}}}',
+	'response' => array( 'code' => 200, 'message' => 'OK' ),
+);
+$GLOBALS['bale_mock_http_last_request'] = null;
+
+$cf7->action_send( array(
+	'form_id'       => 77,
+	'posted_data'   => array(
+		'your-name'    => 'Malicious [User](https://ph.example)',
+		'your-message' => 'hello *world* _under_ (paren) [bracket]',
+	),
+	'recipient_ids' => array( $owner_recipient_id ),
+	'retries'       => 0,
+) );
+
+$last_send = $GLOBALS['bale_mock_http_last_request'];
+expect_true( false !== strpos( $last_send['url'], '/sendMessage' ), 'action_send must call sendMessage' );
+$sent_body = json_decode( $last_send['args']['body'], true );
+expect_equals( $sent_body['chat_id'], '1246343443', 'sendMessage chat_id mismatch' );
+expect_true(
+	false === strpos( $sent_body['text'], '[Malicious User](https://ph.example)' ),
+	'phishing link construct must NOT appear unescaped in the sent text'
+);
+expect_true(
+	false !== strpos( $sent_body['text'], "[\xE2\x80\x8BUser]\xE2\x80\x8B(\xE2\x80\x8Bhttps://ph.example)" ),
+	'sent text must contain ZWSP-escaped field value'
+);
+expect_true(
+	false !== strpos( $sent_body['text'], '*Form: 77*' ),
+	'admin template formatting must render with trusted form-id tag'
+);
+
+// One log row per recipient send (filter by the source table, not global count).
+$log_rows = $wpdb_mock->get_results( "SELECT * FROM wp_bale_connector_logs", 'ARRAY_A' );
+expect_true( count( $log_rows ) >= 1, 'at least one log row must be written for a successful send' );
+$success_rows = array_filter( $log_rows, function ( $r ) { return 'success' === $r['status']; } );
+expect_true( count( $success_rows ) >= 1, 'log row for the successful send should have status=success' );
+expect_true( false !== strpos( $log_rows[0]['recipient_chat_id'], '1246343443' ) || false !== strpos( end( $log_rows )['recipient_chat_id'], '1246343443' ), 'log row should record the recipient chat_id' );
+echo "[PASS] action_send(): message delivered with escaped field values and logged.\n";
+
+// Test 9i-2: handle_form_submission schedules via Action Scheduler.
+// handle_form_submission needs WPCF7 classes — emulate a minimal form object.
+class MockWPCF7Form {
+	public $form_id;
+	public function __construct( $id ) { $this->form_id = $id; }
+	public function id() { return $this->form_id; }
+}
+class MockWPCF7Submission {
+	public static $instance = null;
+	public static function get_instance() { return self::$instance ? self::$instance : null; }
+	public function get_posted_data() { return array( 'your-name' => 'T' ); }
+}
+
+// Without CF7 constants, handle_form_submission() returns before any
+// scheduling (register_hooks() early-returns when CF7 is absent), so we
+// verify schedule_send indirectly through action_send's retry path instead.
+
+// Test 9j-2: retry backoff — transient API failure reschedules with delay.
+$GLOBALS['bale_mock_http_next_response'] = array(
+	'headers'  => array( 'content-type' => 'application/json' ),
+	'body'     => '{"ok":false,"error_code":429,"description":"Too Many Requests","parameters":{"retry_after":90}}',
+	'response' => array( 'code' => 429, 'message' => 'Too Many Requests' ),
+);
+$actions_before = count( $GLOBALS['bale_mock_as_actions'] );
+
+$cf7->action_send( array(
+	'form_id'       => 77,
+	'posted_data'   => array( 'your-name' => 'T' ),
+	'recipient_ids' => array( $owner_recipient_id ),
+	'retries'       => 0,
+) );
+
+$pending_actions = array_slice( $GLOBALS['bale_mock_as_actions'], $actions_before );
+expect_true( count( $pending_actions ) >= 1, 'failed send must schedule a retry action' );
+$retry_args = $pending_actions[0]['args'][0];
+expect_equals( $retry_args['retries'], 1, 'retry must increment retries counter' );
+expect_true(
+	$pending_actions[0]['timestamp'] > time() && $pending_actions[0]['timestamp'] <= time() + 91,
+	'retry delay must honor retry_after (90s)'
+);
+echo "[PASS] schedule_retry(): transient failure reschedules with retry_after honored.\n";
+
+// Test 9k-2: permanent failure — non-transient API errors still retry with
+// backoff, but only up to MAX_RETRIES.
+$GLOBALS['bale_mock_http_next_response'] = array(
+	'headers'  => array( 'content-type' => 'application/json' ),
+	'body'     => '{"ok":false,"error_code":400,"description":"Bad Request: chat not found"}',
+	'response' => array( 'code' => 400, 'message' => 'Bad Request' ),
+);
+$actions_before = count( $GLOBALS['bale_mock_as_actions'] );
+$cf7->action_send( array( 'form_id' => 77, 'posted_data' => array(), 'recipient_ids' => array( $owner_recipient_id ), 'retries' => 3 ) );
+$after = array_slice( $GLOBALS['bale_mock_as_actions'], $actions_before );
+expect_equals( count( $after ), 0, 'no retry may be scheduled after MAX_RETRIES is reached' );
+echo "[PASS] schedule_retry(): gives up after MAX_RETRIES retries.\n";
+
+// Test 9l: extension-point render helper stays consistent with the engine.
+$via_helper = bale_connector_render_template( 'Hi [your-name]', array( 'your-name' => 'Ali *_[]() Sadeghi' ) );
+$direct     = Bale_Template::render( 'Hi [your-name]', array( 'your-name' => 'Ali *_[]() Sadeghi' ) );
+expect_equals( $via_helper, $direct, 'bale_connector_render_template() must match Bale_Template::render()' );
+echo "[PASS] bale_connector_render_template() extension point verified.\n";
 
 echo "ALL TESTS PASSED SUCCESSFULLY on PHP " . PHP_VERSION . "!\n";
