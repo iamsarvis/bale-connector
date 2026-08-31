@@ -313,7 +313,8 @@ class Bale_CF7_Integration {
 			)
 		);
 
-		$failure = null;
+		$failure          = null;
+		$failed_recipients = array();
 
 		foreach ( $recipients as $recipient ) {
 			$chat_id = isset( $recipient['chat_id'] ) ? $recipient['chat_id'] : '';
@@ -334,7 +335,12 @@ class Bale_CF7_Integration {
 						'status'            => 'failed',
 					)
 				);
-				$failure = $result;
+				if ( null === $failure ) {
+					// Keep the first error: retry_after / backoff timing is
+					// derived from it.
+					$failure = $result;
+				}
+				$failed_recipients[] = $recipient['id'];
 				continue;
 			}
 
@@ -350,7 +356,10 @@ class Bale_CF7_Integration {
 			);
 		}
 
-		if ( null !== $failure ) {
+		if ( null !== $failure && ! empty( $failed_recipients ) ) {
+			// Retry only the recipients whose send failed — recipients whose
+			// message was already delivered must not be re-notified.
+			$args['recipient_ids'] = $failed_recipients;
 			$this->schedule_retry( $args, $failure );
 		}
 	}

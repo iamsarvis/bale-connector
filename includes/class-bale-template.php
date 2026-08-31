@@ -122,6 +122,12 @@ class Bale_Template {
 	 * Only submitted field values pass through here. The admin template
 	 * itself is NEVER escaped, so admin formatting still renders.
 	 *
+	 * The pattern is pure ASCII, so the /u modifier is deliberately NOT
+	 * used: with /u, preg_replace() returns null on invalid UTF-8 input
+	 * (which form submissions can contain), silently dropping the value.
+	 * Without /u the byte-level substitution always succeeds and the raw
+	 * bytes still render (escaped) instead of vanishing.
+	 *
 	 * @param string $value User-submitted value.
 	 * @return string Escaped value (displays identically in Bale).
 	 */
@@ -132,9 +138,12 @@ class Bale_Template {
 			return $value;
 		}
 
-		// Append ZWSP after every formatting-significant character.
+		// Append ZWSP after every formatting-significant character. The
+		// pattern is ASCII-only (no /u flag): /u would make preg_replace()
+		// return null on invalid UTF-8 submissions and the whole value
+		// would silently disappear.
 		return preg_replace(
-			'/[*_\[\]()]/u',
+			'/[*_\[\]()]/',
 			'$0' . self::ZWSP,
 			$value
 		);
