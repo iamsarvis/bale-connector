@@ -25,7 +25,13 @@ class Bale_CF7_Admin_Panel {
 	 */
 	public function register() {
 		add_filter( 'wpcf7_editor_panels', array( $this, 'add_editor_panel' ) );
-		add_action( 'wpcf7_admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+
+		// wpcf7_admin_enqueue_scripts is NOT a public hook — it is the NAME
+		// of CF7's own internal callback, which CF7 registers against the
+		// native 'admin_enqueue_scripts' hook (no do_action() ever fires
+		// under that name). Subscribe to the native hook instead and gate on
+		// the same substring CF7 itself uses.
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 
 		// Persist our panel settings when CF7 itself saves the form. CF7 has
 		// already verified its own save nonce (wpcf7-save-contact-form_<id>)
