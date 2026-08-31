@@ -72,10 +72,6 @@ class Bale_CF7_Admin_Panel {
 	 * @param string $hook_suffix Current admin page hook.
 	 */
 	public function enqueue_assets( $hook_suffix ) {
-		// TEMPORARY DEBUG: confirm the exact real hook suffix once on a live
-		// site, then remove this line.
-		error_log( 'BALE_DEBUG hook: ' . $hook_suffix ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- temporary diagnostic, remove after one confirmation.
-
 		if ( false === strpos( (string) $hook_suffix, 'wpcf7' ) ) {
 			return;
 		}
