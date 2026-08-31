@@ -1243,4 +1243,58 @@ $direct     = Bale_Template::render( 'Hi [your-name]', array( 'your-name' => 'Al
 expect_equals( $via_helper, $direct, 'bale_connector_render_template() must match Bale_Template::render()' );
 echo "[PASS] bale_connector_render_template() extension point verified.\n";
 
+// Test 9m: wpcf7_save_contact_form handler persists panel settings from $_POST.
+// The admin panel class is loaded only under is_admin(); load it directly here.
+require_once dirname( __DIR__ ) . '/includes/class-bale-cf7-admin-panel.php';
+
+class MockWPCF7ContactFormForSave {
+	public $id;
+	public function __construct( $id ) { $this->id = $id; }
+	public function id() { return $this->id; }
+}
+
+// The handler type-checks against WPCF7_ContactForm; class_alias() makes our
+// mock satisfy that instanceof check without loading CF7 itself.
+if ( ! class_exists( 'WPCF7_ContactForm' ) ) {
+	class_alias( 'MockWPCF7ContactFormForSave', 'WPCF7_ContactForm' );
+}
+
+$panel = new Bale_CF7_Admin_Panel();
+
+// Simulate the CF7 editor save request: the panel inputs post these names
+// alongside CF7's own fields (wpcf7-save-contact-form_<id> nonce verified
+// upstream by CF7 itself).
+$_POST['bale_cf7_enabled']           = '1';
+$_POST['bale_cf7_recipient_ids']     = array( '7', '8', 'abc' ); // 'abc' must be dropped by absint.
+$_POST['bale_cf7_message_template']  = "*New lead*\r\nName: [your-name] <script>alert(1)</script>";
+
+$panel->save_settings_on_cf7_save(
+	new MockWPCF7ContactFormForSave( 55 ),
+	array( 'id' => 55 ),
+	'save'
+);
+
+$saved_55 = Bale_CF7_Integration::get_form_settings( 55 );
+expect_true( is_array( $saved_55 ), 'wpcf7_save_contact_form handler must persist settings' );
+expect_equals( (int) $saved_55['enabled'], 1, 'enabled flag must persist from bale_cf7_enabled checkbox' );
+expect_equals( $saved_55['recipient_ids'], array( 7, 8 ), 'recipient_ids must persist (absint-normalized, junk dropped)' );
+expect_true( false !== strpos( $saved_55['message_template'], '*New lead*' ), 'template must persist with Bale formatting intact' );
+expect_true( false === strpos( $saved_55['message_template'], '<script>' ), 'template must be HTML-stripped on save' );
+
+// Disabled (unchecked checkbox posts nothing) and validate context: no change.
+unset( $_POST['bale_cf7_enabled'] );
+$panel->save_settings_on_cf7_save( new MockWPCF7ContactFormForSave( 55 ), array(), 'save' );
+$saved_55b = Bale_CF7_Integration::get_form_settings( 55 );
+expect_equals( (int) $saved_55b['enabled'], 0, 'missing checkbox must store enabled=0' );
+
+// 'validate' context (CF7's internal pre-save validation pass) must not write.
+$_POST['bale_cf7_message_template'] = 'SHOULD_NOT_BE_SAVED';
+$panel->save_settings_on_cf7_save( new MockWPCF7ContactFormForSave( 55 ), array(), 'validate' );
+$saved_55c = Bale_CF7_Integration::get_form_settings( 55 );
+expect_true( false === strpos( $saved_55c['message_template'], 'SHOULD_NOT_BE_SAVED' ), 'validate context must not persist settings' );
+
+// Not-a-form object must be a no-op (no fatal).
+$panel->save_settings_on_cf7_save( null, array(), 'save' );
+echo "[PASS] wpcf7_save_contact_form handler: enabled/recipient_ids/template persisted from \$_POST.\n";
+
 echo "ALL TESTS PASSED SUCCESSFULLY on PHP " . PHP_VERSION . "!\n";

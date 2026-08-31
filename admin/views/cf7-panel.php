@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 	<p>
 		<label>
-			<input type="checkbox" id="bale-cf7-enabled" <?php checked( true, $enabled ); ?> />
+			<input type="checkbox" id="bale-cf7-enabled" name="bale_cf7_enabled" value="1" <?php checked( true, $enabled ); ?> />
 			<?php esc_html_e( 'Send a Bale message when this form is submitted', 'bale-connector' ); ?>
 		</label>
 	</p>
@@ -49,7 +49,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			?>
 			<li>
 				<label>
-					<input type="checkbox" class="bale-cf7-recipient" value="<?php echo esc_attr( $rid ); ?>" <?php checked( in_array( $rid, $selected_ids, true ) ); ?> />
+					<input type="checkbox" class="bale-cf7-recipient" name="bale_cf7_recipient_ids[]" value="<?php echo esc_attr( $rid ); ?>" <?php checked( in_array( $rid, $selected_ids, true ) ); ?> />
 					<?php echo esc_html( $rlabel ); ?>
 					<span class="bale-cf7-recipient-meta"><?php echo esc_html( $cid . ' (' . $rtype . ')' ); ?></span>
 				</label>
@@ -74,7 +74,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		?>
 	</p>
 
-	<textarea id="bale-cf7-template" rows="8" class="large-text code"><?php echo esc_textarea( $template ); ?></textarea>
+	<textarea id="bale-cf7-template" name="bale_cf7_message_template" rows="8" class="large-text code"><?php echo esc_textarea( $template ); ?></textarea>
 	<p class="description">
 		<span id="bale-cf7-counter">0</span>
 	</p>

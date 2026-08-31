@@ -26,7 +26,12 @@ class Bale_CF7_Admin_Panel {
 	public function register() {
 		add_filter( 'wpcf7_editor_panels', array( $this, 'add_editor_panel' ) );
 		add_action( 'wpcf7_admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
-		add_action( 'wp_ajax_bale_cf7_save_settings', array( $this, 'ajax_save_settings' ) );
+
+		// Persist our panel settings when CF7 itself saves the form. CF7 has
+		// already verified its own save nonce (wpcf7-save-contact-form_<id>)
+		// and the wpcf7_edit_contact_form capability before this fires.
+		add_action( 'wpcf7_save_contact_form', array( $this, 'save_settings_on_cf7_save' ), 10, 3 );
+
 		add_action( 'wp_ajax_bale_cf7_preview', array( $this, 'ajax_preview' ) );
 		add_action( 'wp_ajax_bale_cf7_test_send', array( $this, 'ajax_test_send' ) );
 	}
@@ -53,10 +58,19 @@ class Bale_CF7_Admin_Panel {
 	/**
 	 * Enqueue panel JS + data on CF7 editor screens.
 	 *
+	 * CF7's own admin/admin.php gates on strpos( $hook_suffix, 'wpcf7' ) —
+	 * its menu pages are registered under the 'wpcf7' page slug, so the
+	 * hook suffixes (e.g. toplevel_page_wpcf7) contain 'wpcf7', not
+	 * 'contact-form-7'.
+	 *
 	 * @param string $hook_suffix Current admin page hook.
 	 */
 	public function enqueue_assets( $hook_suffix ) {
-		if ( false === strpos( (string) $hook_suffix, 'contact_page_contact-form-7' ) ) {
+		// TEMPORARY DEBUG: confirm the exact real hook suffix once on a live
+		// site, then remove this line.
+		error_log( 'BALE_DEBUG hook: ' . $hook_suffix ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- temporary diagnostic, remove after one confirmation.
+
+		if ( false === strpos( (string) $hook_suffix, 'wpcf7' ) ) {
 			return;
 		}
 
@@ -139,23 +153,54 @@ class Bale_CF7_Admin_Panel {
 	}
 
 	/**
-	 * AJAX handler: save per-form settings.
+	 * Persist per-form settings when CF7 itself saves a form.
+	 *
+	 * Hooked to wpcf7_save_contact_form, which CF7 fires (with the
+	 * WPCF7_ContactForm object, the merged request data, and the context)
+	 * right after property sanitization and just before
+	 * $contact_form->save(). By the time it runs, CF7 has already verified
+	 * its own save nonce (wpcf7-save-contact-form_<id>) and the
+	 * wpcf7_edit_contact_form capability in wpcf7_load_contact_form_admin(),
+	 * so this handler does not re-verify a Bale-specific nonce — the save is
+	 * CF7's own authenticated request.
+	 *
+	 * Reads the panel fields from $_POST directly (the panel inputs carry
+	 * name attributes for exactly this purpose) and reuses the same
+	 * sanitization path the former AJAX save used.
+	 *
+	 * @param WPCF7_ContactForm $contact_form The form being saved.
+	 * @param array             $data         Merged request data CF7 assembled.
+	 * @param string            $context      Save context ('save' or 'validate').
 	 */
-	public function ajax_save_settings() {
-		$this->verify_request();
-
-		$form_id = isset( $_POST['form_id'] ) ? absint( $_POST['form_id'] ) : 0;
-		if ( ! $form_id || 'wpcf7_contact_form' !== get_post_type( $form_id ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid form ID.', 'bale-connector' ) ) );
+	public function save_settings_on_cf7_save( $contact_form, $data, $context ) {
+		// Only persist on real saves, not on CF7's internal validation pass.
+		if ( 'save' !== $context ) {
+			return;
 		}
 
-		$enabled          = ! empty( $_POST['enabled'] );
-		$recipient_ids    = isset( $_POST['recipient_ids'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['recipient_ids'] ) ) : array();
-		$message_template = isset( $_POST['message_template'] ) ? wp_unslash( $_POST['message_template'] ) : '';
+		if ( ! $contact_form instanceof WPCF7_ContactForm || ! $contact_form->id() ) {
+			return;
+		}
+
+		// Defense in depth: CF7 has already checked its own capability, but
+		// keep the explicit plugin-config gate here too (AGENTS.md §6).
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$form_id = absint( $contact_form->id() );
+
+		$enabled = ! empty( $_POST['bale_cf7_enabled'] );
+		$recipient_ids = isset( $_POST['bale_cf7_recipient_ids'] )
+			? array_map( 'absint', (array) wp_unslash( $_POST['bale_cf7_recipient_ids'] ) )
+			: array();
+		$message_template = isset( $_POST['bale_cf7_message_template'] )
+			? wp_unslash( (string) $_POST['bale_cf7_message_template'] )
+			: '';
 
 		$template = Bale_CF7_Form_Settings::sanitize_template( $message_template );
 
-		$saved = Bale_CF7_Integration::save_form_settings(
+		Bale_CF7_Integration::save_form_settings(
 			$form_id,
 			array(
 				'enabled'          => $enabled,
@@ -163,12 +208,6 @@ class Bale_CF7_Admin_Panel {
 				'message_template' => $template,
 			)
 		);
-
-		if ( ! $saved ) {
-			wp_send_json_error( array( 'message' => __( 'Could not save settings. Please try again.', 'bale-connector' ) ) );
-		}
-
-		wp_send_json_success( array( 'message' => __( 'Bale notification settings saved.', 'bale-connector' ) ) );
 	}
 
 	/**

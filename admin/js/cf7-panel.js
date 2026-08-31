@@ -51,14 +51,6 @@
 		element.classList.toggle( 'bale-cf7-notice', true );
 	}
 
-	function getSelectedRecipientIds() {
-		return Array.prototype.slice
-			.call( document.querySelectorAll( '.bale-cf7-recipient:checked' ) )
-			.map( function ( checkbox ) {
-				return checkbox.value;
-			} );
-	}
-
 	function currentTemplate() {
 		return document.getElementById( 'bale-cf7-template' ).value;
 	}
@@ -100,31 +92,9 @@
 			} );
 		}
 
-		// Save: hooked into the CF7 editor save flow.
-		var saveButton = document.querySelector( '#wpcf7-save-button, .submit .button-primary' );
-		if ( saveButton ) {
-			saveButton.addEventListener( 'click', function () {
-				var panel = document.getElementById( 'bale-cf7-panel-wrap' );
-				if ( ! panel ) {
-					return;
-				}
-
-				postAction(
-					'bale_cf7_save_settings',
-					{
-						form_id: document.getElementById( 'bale-cf7-form-id' ).value,
-						enabled: document.getElementById( 'bale-cf7-enabled' ).checked ? 1 : 0,
-						recipient_ids: getSelectedRecipientIds(),
-						message_template: templateField.value,
-					},
-					function ( json ) {
-						if ( ! json.success ) {
-							window.alert( json.data && json.data.message ? json.data.message : cfg.i18n.errorGeneric );
-						}
-					}
-				);
-			} );
-		}
+		// Save happens natively: the panel inputs carry name attributes and
+		// are submitted with CF7's own form, so settings persist through the
+		// wpcf7_save_contact_form hook — no separate AJAX save here.
 
 		// Test send.
 		var testSendButton = document.getElementById( 'bale-cf7-test-send' );
