@@ -55,6 +55,38 @@ function esc_attr( $text ) { return htmlspecialchars( (string) $text, ENT_QUOTES
 function esc_url( $url ) { return $url; }
 function admin_url( $path = '' ) { return 'https://example.com/wp-admin/' . $path; }
 function esc_html__( $text, $domain = 'default' ) { return esc_html( $text ); }
+function esc_html_e( $text, $domain = 'default' ) { echo esc_html( $text ); }
+function selected( $selected, $current = true, $echo = true ) {
+	$res = ( (string) $selected === (string) $current ) ? " selected='selected'" : '';
+	if ( $echo ) echo $res;
+	return $res;
+}
+function wp_nonce_field( $action = -1, $name = '_wpnonce', $referer = true, $echo = true ) {
+	$field = '<input type="hidden" name="' . esc_attr( $name ) . '" value="' . esc_attr( wp_create_nonce( $action ) ) . '" />';
+	if ( $echo ) echo $field;
+	return $field;
+}
+function wp_create_nonce( $action = -1 ) { return 'mock-nonce-' . substr( md5( (string) $action ), 0, 10 ); }
+function check_admin_referer( $action = -1, $query_arg = '_wpnonce' ) {
+	$valid = isset( $_REQUEST[ $query_arg ] ) && $_REQUEST[ $query_arg ] === wp_create_nonce( $action );
+	if ( ! $valid ) {
+		wp_die( '', '', array( 'exit_code' => -1 ) );
+	}
+	return true;
+}
+function add_query_arg( $args, $url = '' ) {
+	$base = ( '' !== $url ) ? $url : 'https://example.com/wp-admin/';
+	$sep = ( false === strpos( $base, '?' ) ) ? '?' : '&';
+	return $base . $sep . http_build_query( $args );
+}
+function wp_safe_redirect( $url, $status = 302 ) { return true; }
+function number_format_i18n( $number, $decimals = 0 ) { return number_format( (float) $number, $decimals ); }
+function mysql2date( $format, $date, $translate = true ) {
+	$ts = strtotime( (string) $date );
+	return $ts ? $ts : false;
+}
+function date_i18n( $format, $timestamp ) { return date( $format, (int) $timestamp ); }
+function get_option_date_format() { return ''; }
 function esc_attr_e( $text, $domain = 'default' ) { echo esc_attr( $text ); }
 function sanitize_text_field( $str ) { return trim( strip_tags( (string) $str ) ); }
 function wp_json_encode( $data ) { return json_encode( $data ); }
@@ -168,7 +200,14 @@ function settings_fields( $group ) {}
 function do_settings_sections( $page ) {}
 function submit_button( $text ) {}
 function deactivate_plugins( $plugins ) {}
-function wp_die( $message = '', $title = '', $args = array() ) {}
+function wp_die( $message = '', $title = '', $args = array() ) {
+	// When the Phase 5 tests enable this flag, wp_die() throws so control
+	// flow (nonce failure / capability failure) is observable in tests.
+	if ( ! empty( $GLOBALS['bale_wp_die_throws'] ) ) {
+		$code = isset( $args['exit_code'] ) ? (int) $args['exit_code'] : -1;
+		throw new RuntimeException( 'WP_DIE:' . $code );
+	}
+}
 
 $mock_options = array();
 function get_option( $name, $default = false ) {
@@ -192,6 +231,30 @@ function delete_option( $name ) {
     global $mock_options;
     unset( $mock_options[ $name ] );
     return true;
+}
+
+// Minimal WP_List_Table stub: the real base class lives in an admin-only
+// include that is not part of this test environment. The plugin's own
+// Bale_Log_List_Table (loaded via bale-connector.php) extends this stub.
+class WP_List_Table {
+	public $items = array();
+	public $_column_headers = array();
+	protected $screen = 'test';
+	public function __construct( $args = array() ) {}
+	public function get_pagenum() { return 1; }
+	public function set_pagination_args( $args ) {}
+	public function display() {
+		foreach ( $this->items as $item ) {
+			foreach ( $this->_column_headers[0] as $col => $label ) {
+				if ( 'cb' === $col ) { continue; }
+				$method = 'column_' . $col;
+				echo ( method_exists( $this, $method ) )
+					? $this->$method( $item )
+					: $this->column_default( $item, $col );
+				echo "\n";
+			}
+		}
+	}
 }
 
 // Load plugin files
@@ -398,7 +461,56 @@ class MockFullWPDB {
 
     public function query( $sql ) {
         $this->queries[] = $sql;
+
+        // Emulate DELETE ... WHERE id IN (...) — returns affected row count.
+        if ( preg_match( '/^DELETE FROM ([a-zA-Z0-9_]+) WHERE id IN \( ([0-9, ]+) \)$/i', $sql, $m ) ) {
+            $ids = array_filter( array_map( 'intval', explode( ',', $m[2] ) ) );
+            $deleted = 0;
+            foreach ( $ids as $id ) {
+                if ( isset( $this->rows[ $id ] ) && isset( $this->row_tables[ $id ] ) && $this->row_tables[ $id ] === $m[1] ) {
+                    unset( $this->rows[ $id ] );
+                    $deleted++;
+                }
+            }
+            return $deleted;
+        }
+
+        // Emulate DELETE FROM table (delete_all) — returns affected row count.
+        if ( preg_match( '/^DELETE FROM ([a-zA-Z0-9_]+)$/i', $sql, $m ) ) {
+            $deleted = 0;
+            foreach ( $this->rows as $rid => $row ) {
+                if ( isset( $this->row_tables[ $rid ] ) && $this->row_tables[ $rid ] === $m[1] ) {
+                    unset( $this->rows[ $rid ] );
+                    $deleted++;
+                }
+            }
+            return $deleted;
+        }
+
         return true;
+    }
+
+    public function get_var( $sql = null ) {
+        $sql = (string) $sql;
+        $this->queries[] = $sql;
+
+        // Simulate hosts that block information_schema (shared hosting).
+        if ( false !== strpos( $sql, 'information_schema' ) ) {
+            return null;
+        }
+
+        // Emulate SELECT COUNT(*) FROM <table> against the row store.
+        if ( preg_match( '/SELECT\s+COUNT\(\*\)\s+FROM\s+([a-zA-Z0-9_]+)/i', $sql, $m ) ) {
+            $count = 0;
+            foreach ( $this->rows as $rid => $row ) {
+                if ( isset( $this->row_tables[ $rid ] ) && $this->row_tables[ $rid ] === $m[1] ) {
+                    $count++;
+                }
+            }
+            return (string) $count;
+        }
+
+        return null;
     }
 }
 $GLOBALS['wpdb'] = new MockFullWPDB();
@@ -1296,5 +1408,270 @@ expect_true( false === strpos( $saved_55c['message_template'], 'SHOULD_NOT_BE_SA
 // Not-a-form object must be a no-op (no fatal).
 $panel->save_settings_on_cf7_save( null, array(), 'save' );
 echo "[PASS] wpcf7_save_contact_form handler: enabled/recipient_ids/template persisted from \$_POST.\n";
+
+// ==========================================
+// Phase 5: Logging Admin UI, migration & i18n Tests
+// ==========================================
+echo "\n--- Phase 5: Log List Table / Migration / Retention Tests ---\n";
+
+// ---- Test 10a: Old-schema upgrade path (approved addition #1) ----
+// Simulate an install created before the Phase 5 indexes: stored
+// bale_connector_db_version = 1.0.0. A mock dbDelta captures the CREATE
+// TABLE statements; SHOW INDEX / ALTER TABLE run through the wpdb mock.
+class MockWPDBForMigration extends MockFullWPDB {
+	public $query_log = array();
+	public function get_results( $sql, $output = 'ARRAY_A' ) {
+		$this->query_log[] = $sql;
+		// SHOW INDEX reports only the primary key (old schema state).
+		if ( 0 === strpos( $sql, 'SHOW INDEX FROM' ) ) {
+			return array(
+				array( 'Key_name' => 'PRIMARY' ),
+			);
+		}
+		return parent::get_results( $sql, $output );
+	}
+	public function query( $sql ) {
+		$this->query_log[] = $sql;
+		return true;
+	}
+}
+
+if ( ! defined( 'WP_ADMIN' ) ) {
+	define( 'WP_ADMIN', true );
+}
+
+// Test-harness stand-in for wp-admin/includes/upgrade.php: the real file is
+// part of WordPress and absent here. run_db_delta() requires it explicitly
+// (the production requirement); when the real file exists in a WP install
+// its dbDelta() wins because our function_exists() guard skips this stub.
+if ( ! function_exists( 'dbDelta' ) ) {
+	$GLOBALS['bale_mock_dbdelta_sql'] = array();
+
+	if ( ! is_dir( ABSPATH . 'wp-admin/includes' ) ) {
+		mkdir( ABSPATH . 'wp-admin/includes', 0777, true );
+	}
+	file_put_contents(
+		ABSPATH . 'wp-admin/includes/upgrade.php',
+		'<?php function dbDelta( $sql ) { $GLOBALS["bale_mock_dbdelta_sql"][] = $sql; return array(); }'
+	);
+}
+
+$migration_db   = new MockWPDBForMigration();
+$GLOBALS['wpdb'] = $migration_db;
+
+$mock_options['bale_connector_db_version'] = '1.0.0'; // Old schema state.
+$GLOBALS['bale_mock_dbdelta_sql'] = array();
+
+$upgraded = Bale_Installer::maybe_upgrade();
+
+expect_true( true === $upgraded, 'maybe_upgrade() must report an upgrade when versions differ' );
+expect_true( count( $GLOBALS['bale_mock_dbdelta_sql'] ) >= 1, 'maybe_upgrade() must re-run dbDelta on version mismatch' );
+expect_true( false !== strpos( $GLOBALS['bale_mock_dbdelta_sql'][0], 'bale_connector_logs' ), 'dbDelta re-run must include the logs table' );
+
+$alter_statements = array_filter( $migration_db->query_log, function ( $q ) {
+	return 0 === strpos( $q, 'ALTER TABLE' );
+} );
+$alter_sql        = implode( "\n", $alter_statements );
+expect_true( false !== strpos( $alter_sql, 'ADD INDEX created_at' ), 'missing created_at index must be added via ALTER TABLE' );
+expect_true( false !== strpos( $alter_sql, 'ADD INDEX status_created' ), 'missing status_created index must be added via ALTER TABLE' );
+expect_true( false !== strpos( $alter_sql, 'ADD INDEX source_type' ), 'missing source_type index must be added via ALTER TABLE' );
+expect_equals( $mock_options['bale_connector_db_version'], Bale_Installer::DB_VERSION, 'stored db version must be bumped after upgrade' );
+
+// Idempotency: second call must be a no-op.
+$queries_before = count( $migration_db->query_log );
+$second_upgrade = Bale_Installer::maybe_upgrade();
+expect_true( false === $second_upgrade, 'maybe_upgrade() must be a no-op when already current' );
+expect_equals( count( $migration_db->query_log ), $queries_before, 'no-op upgrade must not run any queries' );
+
+// Fresh-install path (no stored version) also migrates.
+unset( $mock_options['bale_connector_db_version'] );
+$GLOBALS['bale_mock_dbdelta_sql'] = array();
+$fresh_upgrade = Bale_Installer::maybe_upgrade();
+expect_true( true === $fresh_upgrade, 'missing db version option must trigger upgrade' );
+expect_true( count( $GLOBALS['bale_mock_dbdelta_sql'] ) >= 1, 'fresh-install path must run dbDelta' );
+echo "[PASS] Schema migration: old-schema install gains indexes; idempotent; fresh path covered.\n";
+
+// ---- Test 10b: render-time escaping of every DB field (SECURITY DoD) ----
+class MockWPListTableBase {
+	public $items = array();
+	protected $screen = 'mock';
+	public function __construct( $args = array() ) {}
+	public function get_pagenum() { return 1; }
+	public function set_pagination_args( $args ) {}
+	public function display() {
+		foreach ( $this->items as $item ) {
+			foreach ( $this->_column_headers[0] as $col => $label ) {
+				if ( 'cb' === $col ) { continue; }
+				$method = 'column_' . $col;
+				echo ( method_exists( $this, $method ) )
+					? $this->$method( $item )
+					: $this->column_default( $item, $col );
+				echo "\n";
+			}
+		}
+	}
+}
+if ( ! class_exists( 'WP_List_Table' ) ) {
+	class_alias( 'MockWPListTableBase', 'WP_List_Table' );
+}
+
+$GLOBALS['wpdb'] = $wpdb_mock; // Phase 4 mock with log rows still present.
+
+// Seed rows with hostile + non-ASCII values to prove render-time escaping.
+Bale_Logger::log( array(
+	'source_type'       => 'cf7',
+	'source_ref'        => '42',
+	'recipient_chat_id' => '<script>alert("chat")</script>',
+	'payload'           => array( 'text' => "<script>alert(1)</script>\nس 张 Á <img src=x onerror=alert(2)>" ),
+	'response'          => array( 'description' => '<b>ok</b> & <i>delivered</i>' ),
+	'status'            => 'success',
+) );
+Bale_Logger::log( array(
+	'source_type'       => 'cf7',
+	'source_ref'        => "'>\"onmouseover=alert(3)",
+	'recipient_chat_id' => '1246343443',
+	'payload'           => array( 'text' => 'سلام سبحان —Persian payload—' ),
+	'response'          => '',
+	'status'            => 'failed',
+) );
+
+$log_list_table = new Bale_Log_List_Table();
+$log_list_table->prepare_items();
+expect_true( count( $log_list_table->items ) > 0, 'list table must load existing log rows' );
+
+ob_start();
+$log_list_table->display();
+$rendered_logs = ob_get_clean();
+
+// A hostile payload previously inserted into the mock DB must NOT appear
+// unescaped in the rendered HTML.
+expect_true( false === strpos( $rendered_logs, '<script>' ), 'rendered logs must not contain a raw <script> tag' );
+expect_true( false !== strpos( $rendered_logs, '&lt;script&gt;' ), 'hostile payload must appear HTML-escaped' );
+expect_true( false !== strpos( $rendered_logs, 'س 张 Á' ), 'non-ASCII field values must survive rendering' );
+echo "[PASS] Log table: hostile payload rendered escaped; no raw HTML from DB values.\n";
+
+// ---- Test 10c: POST-only delete handlers (approved addition #2) ----
+$GLOBALS['bale_wp_die_throws'] = true;
+
+// Seed rows for deletion tests.
+$del1 = Bale_Logger::log( array( 'source_type' => 'cf7', 'recipient_chat_id' => '111', 'payload' => 'a', 'status' => 'failed' ) );
+$del2 = Bale_Logger::log( array( 'source_type' => 'cf7', 'recipient_chat_id' => '222', 'payload' => 'b', 'status' => 'success' ) );
+$del3 = Bale_Logger::log( array( 'source_type' => 'cf7', 'recipient_chat_id' => '333', 'payload' => 'c', 'status' => 'failed' ) );
+expect_true( is_int( $del1 ) && is_int( $del2 ) && is_int( $del3 ), 'deletion test rows must insert cleanly' );
+
+$admin_for_delete = new Bale_Admin();
+
+// Valid nonce + single delete → row removed. The nonce field name in every
+// delete form is 'bale_log_nonce' (as posted by wp_nonce_field()).
+$_REQUEST['bale_log_nonce'] = wp_create_nonce( 'bale_delete_log' );
+$deleted_single = $admin_for_delete->process_log_delete( 'delete', array( 'log_id' => $del1 ) );
+expect_equals( $deleted_single, 1, 'single delete with valid nonce must remove exactly one row' );
+
+// Missing nonce → dies (like check_admin_referer), row NOT deleted.
+unset( $_REQUEST['bale_log_nonce'], $_REQUEST['_wpnonce'] );
+try {
+	$admin_for_delete->process_log_delete( 'delete', array( 'log_id' => $del2 ) );
+	expect_true( false, 'delete without nonce must not succeed silently' );
+} catch ( RuntimeException $e ) {
+	expect_true( 0 === strpos( $e->getMessage(), 'WP_DIE:-1' ), 'missing nonce must die with -1 (check_admin_referer semantics), got: ' . $e->getMessage() );
+}
+expect_true( isset( $wpdb_mock->rows[ $del2 ] ), 'row must still exist after a nonce-failed delete attempt' );
+
+// Invalid nonce → dies as well.
+$_REQUEST['bale_log_nonce'] = 'tampered-nonce-value';
+try {
+	$admin_for_delete->process_log_delete( 'delete_all', array() );
+	expect_true( false, 'delete_all with invalid nonce must not succeed' );
+} catch ( RuntimeException $e ) {
+	expect_true( 0 === strpos( $e->getMessage(), 'WP_DIE:-1' ), 'invalid nonce must die with -1, got: ' . $e->getMessage() );
+}
+
+// Valid nonce + bulk delete → all listed rows removed.
+$_REQUEST['bale_log_nonce'] = wp_create_nonce( 'bale_bulk_logs' );
+$deleted_bulk = $admin_for_delete->process_log_delete( 'delete_bulk', array( 'log_ids' => array( $del2, $del3, 'junk', '-5' ) ) );
+expect_equals( $deleted_bulk, 2, 'bulk delete must remove exactly the two valid rows' );
+
+// Valid nonce + delete_all → everything removed.
+$_REQUEST['bale_log_nonce'] = wp_create_nonce( 'bale_delete_all_logs' );
+$deleted_all = $admin_for_delete->process_log_delete( 'delete_all', array() );
+expect_true( $deleted_all >= 2, 'delete_all must report all rows deleted' );
+expect_equals( Bale_Logger::count_items( array() ), 0, 'delete_all must empty the logs table' );
+
+// Unknown action → no deletion, no fatal.
+$_REQUEST['_wpnonce'] = wp_create_nonce( 'bale_delete_log' );
+expect_equals( $admin_for_delete->process_log_delete( 'nonsense_action', array( 'log_id' => 999 ) ), 0, 'unknown action must be a no-op' );
+echo "[PASS] Delete handlers: nonce-gated, POST-only core verified (valid/missing/invalid nonce paths).\n";
+
+// ---- Test 10d: retention pruning with mocked information_schema ----
+class MockWPDBForRetention extends MockFullWPDB {
+	public $simulated_bytes = 0;
+	public function get_var( $sql = null ) {
+		$sql = (string) $sql;
+		if ( false !== strpos( $sql, 'information_schema' ) ) {
+			return (string) $this->simulated_bytes;
+		}
+		return parent::get_var( $sql );
+	}
+}
+
+$retention_db   = new MockWPDBForRetention();
+$GLOBALS['wpdb'] = $retention_db;
+
+// 60 rows, stored size set high enough to exceed the cap below.
+$retention_db->simulated_bytes = 12 * 1024 * 1024;
+for ( $i = 0; $i < 60; $i++ ) {
+	Bale_Logger::log( array( 'source_type' => 'cf7', 'recipient_chat_id' => 'rc' . $i, 'payload' => 'p' . $i, 'status' => 'failed' ) );
+}
+
+// The mock's simulated size is static; model real DB behavior: after each
+// pruning round, shrink the reported size in proportion to rows deleted.
+// Cap = 10 MB of 12 MB → at least 1/6 of rows must go.
+$mock_options['bale_connector_log_retention_mb'] = 10;
+$rows_before_prune = count( $retention_db->rows );
+$pruned = Bale_Logger::prune_to_retention( true );
+expect_true( is_int( $pruned ) && $pruned > 0, 'over-cap table must be pruned' );
+expect_true( count( $retention_db->rows ) < $rows_before_prune, 'pruning must delete rows' );
+
+// Under cap → no deletion.
+$retention_db->simulated_bytes = 1024; // 1 KB, far below cap.
+$pruned_none = Bale_Logger::prune_to_retention( true );
+expect_true( true === $pruned_none, 'under-cap table must not be pruned' );
+
+// information_schema blocked → graceful skip, no fatal.
+class MockWPDBNoInformationSchema extends MockWPDBForRetention {
+	public function get_var( $sql = null ) {
+		$sql = (string) $sql;
+		if ( false !== strpos( $sql, 'information_schema' ) ) {
+			return null; // Blocked by the host.
+		}
+		return MockFullWPDB::get_var( $sql );
+	}
+}
+$blocked_db     = new MockWPDBNoInformationSchema();
+$GLOBALS['wpdb'] = $blocked_db;
+$blocked_db->simulated_bytes = 50 * 1024 * 1024;
+$blocked_result = Bale_Logger::prune_to_retention( true );
+expect_true( false === $blocked_result, 'blocked information_schema must degrade gracefully (skip cleanup)' );
+echo "[PASS] Retention: MB-cap pruning works; under-cap no-op; blocked information_schema degrades gracefully.\n";
+
+// ---- Test 10e: log level gate ----
+$mock_options['bale_connector_log_level'] = 'failed_only';
+$rows_before_level = count( $GLOBALS['wpdb']->rows );
+Bale_Logger::log( array( 'source_type' => 'cf7', 'recipient_chat_id' => 'lvl', 'payload' => 'x', 'status' => 'success' ) );
+expect_equals( count( $GLOBALS['wpdb']->rows ), $rows_before_level, "failed_only must skip persisting successful sends" );
+Bale_Logger::log( array( 'source_type' => 'cf7', 'recipient_chat_id' => 'lvl', 'payload' => 'x', 'status' => 'failed' ) );
+expect_equals( count( $GLOBALS['wpdb']->rows ), $rows_before_level + 1, "failed_only must still persist failures" );
+$mock_options['bale_connector_log_level'] = 'all';
+Bale_Logger::log( array( 'source_type' => 'cf7', 'recipient_chat_id' => 'lvl', 'payload' => 'x', 'status' => 'success' ) );
+expect_equals( count( $GLOBALS['wpdb']->rows ), $rows_before_level + 2, "'all' level must persist successes again" );
+echo "[PASS] Log level: failed_only skips success writes; all persists everything.\n";
+
+// ---- Test 10f: filter queries ----
+$GLOBALS['wpdb'] = $wpdb_mock;
+$found = Bale_Logger::query_items( array( 'source_type' => 'cf7', 'status' => 'failed' ) );
+expect_true( is_array( $found ), 'query_items must return an array' );
+$found_by_date = Bale_Logger::query_items( array( 'date_from' => '2000-01-01', 'date_to' => '2100-01-01' ) );
+expect_true( is_array( $found_by_date ), 'date-filtered query must return an array' );
+echo "[PASS] Filter queries execute through prepared statements.\n";
 
 echo "ALL TESTS PASSED SUCCESSFULLY on PHP " . PHP_VERSION . "!\n";
