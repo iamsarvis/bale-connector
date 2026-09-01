@@ -399,6 +399,11 @@ class Bale_Admin {
 	 * POST request verified with check_admin_referer() (CSRF-safe, immune to
 	 * link prefetchers) and gated by current_user_can( 'manage_options' ).
 	 * Ends with POST-Redirect-GET so a refresh cannot replay a delete.
+	 *
+	 * This method is a THIN wrapper: it only parses $_POST onto the internal
+	 * action vocabulary and owns the redirect/exit. All security checks and
+	 * the deletion itself live in process_log_delete(), which the tests
+	 * exercise directly — one code path for both.
 	 */
 	public function handle_log_actions() {
 		$is_custom_post = isset( $_POST['bale_log_action'] );
@@ -420,90 +425,68 @@ class Bale_Admin {
 			return; // Nothing to do — normal admin page load.
 		}
 
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'bale-connector' ) );
-		}
+		// Map the request onto the shared internal action vocabulary.
+		$post_snapshot = wp_unslash( $_POST );
 
-		$logs_url = admin_url( 'admin.php?page=bale-connector-logs' );
-
-		// Standard bulk dropdown path.
 		if ( '' !== $bulk_action ) {
-			check_admin_referer( 'bale_bulk_logs', 'bale_log_nonce' );
-
 			if ( 'bale_delete_logs' === $bulk_action ) {
-				$ids     = isset( $_POST['log_ids'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['log_ids'] ) ) : array();
-				$deleted = Bale_Logger::delete_by_ids( $ids );
-
-				wp_safe_redirect( add_query_arg( array(
-					'bale_deleted' => $deleted,
-					'bale_total'   => count( $ids ),
-				), $logs_url ) );
-				exit;
+				$internal_action = 'delete_bulk';
+			} elseif ( 'bale_delete_all_logs' === $bulk_action ) {
+				$internal_action = 'delete_all';
+			} else {
+				return; // Unknown bulk action: ignore.
 			}
-
-			if ( 'bale_delete_all_logs' === $bulk_action ) {
-				$deleted = Bale_Logger::delete_all();
-
-				wp_safe_redirect( add_query_arg( array(
-					'bale_deleted' => $deleted,
-					'bale_total'   => $deleted,
-				), $logs_url ) );
-				exit;
-			}
-
-			return; // Unknown bulk action: ignore.
+		} else {
+			$internal_action = sanitize_key( (string) $post_snapshot['bale_log_action'] );
 		}
 
-		// Custom POST path (single-row form and the Delete All button).
-		$action = sanitize_key( wp_unslash( $_POST['bale_log_action'] ) );
+		// Shared core: capability check + nonce verification + deletion.
+		$deleted = $this->process_log_delete( $internal_action, $post_snapshot );
 
-		switch ( $action ) {
+		if ( null === $deleted ) {
+			return; // Unknown action: no redirect, no deletion.
+		}
+
+		// Total the user asked about (for the success notice).
+		switch ( $internal_action ) {
 			case 'delete':
-				check_admin_referer( 'bale_delete_log', 'bale_log_nonce' );
-
-				$id      = isset( $_POST['log_id'] ) ? absint( $_POST['log_id'] ) : 0;
-				$deleted = $id ? Bale_Logger::delete_by_ids( $id ) : 0;
-
-				wp_safe_redirect( add_query_arg( array(
-					'bale_deleted' => $deleted,
-					'bale_total'   => 1,
-				), $logs_url ) );
-				exit;
-
-			case 'delete_all':
-				check_admin_referer( 'bale_delete_all_logs', 'bale_log_nonce' );
-
-				$deleted = Bale_Logger::delete_all();
-
-				wp_safe_redirect( add_query_arg( array(
-					'bale_deleted' => $deleted,
-					'bale_total'   => $deleted,
-				), $logs_url ) );
-				exit;
-
+				$total = 1;
+				break;
+			case 'delete_bulk':
+				$total = isset( $post_snapshot['log_ids'] ) ? count( (array) $post_snapshot['log_ids'] ) : 0;
+				break;
 			default:
-				// Unknown action value: ignore (no redirect, no deletion).
-				return;
+				$total = $deleted; // delete_all reports what it actually removed.
+				break;
 		}
+
+		wp_safe_redirect( add_query_arg( array(
+			'bale_deleted' => $deleted,
+			'bale_total'   => $total,
+		), admin_url( 'admin.php?page=bale-connector-logs' ) ) );
+		exit;
 	}
 
 	/**
-	 * Testable core of the log-delete handlers.
+	 * Shared core of the log-delete handlers.
 	 *
-	 * Performs capability check, nonce verification and the deletion itself,
-	 * and RETURNS the deleted count instead of redirecting/exiting — the
-	 * thin public wrapper above owns the HTTP concerns. Nonce failure dies
-	 * with -1 (exactly like check_admin_referer() in WP), and a failed
+	 * Performs the capability check, nonce verification and the deletion
+	 * itself, and RETURNS the deleted count instead of redirecting/exiting
+	 * — the HTTP wrapper handle_log_actions() owns redirect/exit. This is
+	 * the ONLY place dispatch + security + deletion live, so tests that
+	 * exercise it cover the exact code path real admin requests take.
+	 *
+	 * Nonce failure dies with -1 (check_admin_referer semantics); a failed
 	 * capability check dies with 0 — both observable in tests via a
 	 * throwing wp_die() mock.
 	 *
-	 * @param string $action   One of 'delete', 'delete_bulk', 'delete_all'.
-	 * @param array  $post     Emulated $_POST subset (already unslashed).
-	 * @return int Number of rows deleted.
+	 * @param string $action One of 'delete', 'delete_bulk', 'delete_all'.
+	 * @param array  $post   Emulated $_POST subset (already unslashed).
+	 * @return int|null Number of rows deleted, or null for an unknown action.
 	 */
 	public function process_log_delete( $action, $post ) {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'bale-connector' ), '', array( 'exit_code' => 0 ) );
+			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'bale-connector' ) );
 		}
 
 		$nonce_action_map = array(
@@ -515,7 +498,7 @@ class Bale_Admin {
 		$action = sanitize_key( (string) $action );
 
 		if ( ! isset( $nonce_action_map[ $action ] ) ) {
-			return 0; // Unknown action: nothing to verify, nothing to delete.
+			return null; // Unknown action: nothing to verify, nothing to delete.
 		}
 
 		check_admin_referer( $nonce_action_map[ $action ], 'bale_log_nonce' );

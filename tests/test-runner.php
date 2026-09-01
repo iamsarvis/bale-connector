@@ -1597,10 +1597,30 @@ $deleted_all = $admin_for_delete->process_log_delete( 'delete_all', array() );
 expect_true( $deleted_all >= 2, 'delete_all must report all rows deleted' );
 expect_equals( Bale_Logger::count_items( array() ), 0, 'delete_all must empty the logs table' );
 
-// Unknown action → no deletion, no fatal.
-$_REQUEST['_wpnonce'] = wp_create_nonce( 'bale_delete_log' );
-expect_equals( $admin_for_delete->process_log_delete( 'nonsense_action', array( 'log_id' => 999 ) ), 0, 'unknown action must be a no-op' );
+// Unknown action → no deletion, no fatal (null = wrapper must not redirect).
+$_REQUEST['bale_log_nonce'] = wp_create_nonce( 'bale_delete_log' );
+expect_true( null === $admin_for_delete->process_log_delete( 'nonsense_action', array( 'log_id' => 999 ) ), 'unknown action must be a no-op returning null' );
 echo "[PASS] Delete handlers: nonce-gated, POST-only core verified (valid/missing/invalid nonce paths).\n";
+
+// ---- Test 10c-2: delete_by_ids( array() ) must delete NOTHING ----
+// Regression guard: an empty bulk selection must never degrade into a
+// WHERE-less DELETE FROM that would wipe the whole table.
+$seed_a = Bale_Logger::log( array( 'source_type' => 'cf7', 'recipient_chat_id' => 'ea', 'payload' => 'ea', 'status' => 'failed' ) );
+$seed_b = Bale_Logger::log( array( 'source_type' => 'cf7', 'recipient_chat_id' => 'eb', 'payload' => 'eb', 'status' => 'failed' ) );
+$rows_before_empty = count( $wpdb_mock->rows );
+$queries_before_empty = count( $wpdb_mock->queries );
+
+expect_equals( Bale_Logger::delete_by_ids( array() ), 0, 'delete_by_ids( array() ) must return 0' );
+expect_equals( Bale_Logger::delete_by_ids( array( '', 'junk', 0 ) ), 0, 'delete_by_ids() with only junk values must return 0' );
+expect_equals( count( $wpdb_mock->rows ), $rows_before_empty, 'no rows may be deleted by an empty/invalid ID list' );
+expect_equals( count( $wpdb_mock->queries ), $queries_before_empty, 'empty ID list must not issue ANY DELETE query' );
+expect_true( isset( $wpdb_mock->rows[ $seed_a ] ) && isset( $wpdb_mock->rows[ $seed_b ] ), 'seed rows must survive empty-list deletes' );
+
+// Same guarantee through the shared delete core (bulk with zero checkboxes).
+$_REQUEST['bale_log_nonce'] = wp_create_nonce( 'bale_bulk_logs' );
+expect_equals( $admin_for_delete->process_log_delete( 'delete_bulk', array( 'log_ids' => array() ) ), 0, 'bulk delete with zero selected rows must be a no-op' );
+expect_equals( count( $wpdb_mock->rows ), $rows_before_empty, 'bulk delete with zero selected rows must delete nothing' );
+echo "[PASS] delete_by_ids( array() ): returns 0, deletes nothing, issues no DELETE query.\n";
 
 // ---- Test 10d: retention pruning with mocked information_schema ----
 class MockWPDBForRetention extends MockFullWPDB {
