@@ -17,6 +17,7 @@ class Bale_Admin {
 	public function init() {
 		add_action( 'admin_menu', array( $this, 'register_menus' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_init', array( $this, 'handle_log_actions' ) );
 		add_action( 'admin_notices', array( $this, 'check_token_decryption_notice' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
 
@@ -116,6 +117,26 @@ class Bale_Admin {
 			)
 		);
 
+		register_setting(
+			'bale_connector_settings_group',
+			'bale_connector_log_level',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( $this, 'sanitize_log_level' ),
+				'default'           => 'all',
+			)
+		);
+
+		register_setting(
+			'bale_connector_settings_group',
+			'bale_connector_log_retention_mb',
+			array(
+				'type'              => 'integer',
+				'sanitize_callback' => array( $this, 'sanitize_log_retention_mb' ),
+				'default'           => 5,
+			)
+		);
+
 		add_settings_section(
 			'bale_connector_general_section',
 			__( 'General Settings', 'bale-connector' ),
@@ -135,6 +156,22 @@ class Bale_Admin {
 			'bale_connector_keep_data_on_uninstall',
 			__( 'Keep Data on Uninstall', 'bale-connector' ),
 			array( $this, 'render_keep_data_field' ),
+			'bale-connector',
+			'bale_connector_general_section'
+		);
+
+		add_settings_field(
+			'bale_connector_log_level',
+			__( 'Log Level', 'bale-connector' ),
+			array( $this, 'render_log_level_field' ),
+			'bale-connector',
+			'bale_connector_general_section'
+		);
+
+		add_settings_field(
+			'bale_connector_log_retention_mb',
+			__( 'Log Storage Cap (MB)', 'bale-connector' ),
+			array( $this, 'render_log_retention_field' ),
 			'bale-connector',
 			'bale_connector_general_section'
 		);
@@ -264,6 +301,63 @@ class Bale_Admin {
 	}
 
 	/**
+	 * Sanitize the log level option.
+	 *
+	 * @param mixed $input Input value.
+	 * @return string 'all' or 'failed_only'.
+	 */
+	public function sanitize_log_level( $input ) {
+		return ( 'failed_only' === $input ) ? 'failed_only' : 'all';
+	}
+
+	/**
+	 * Sanitize the log retention cap (MB). 0–1024; 0 disables cleanup.
+	 *
+	 * @param mixed $input Input value.
+	 * @return int Cap in MB.
+	 */
+	public function sanitize_log_retention_mb( $input ) {
+		return max( 0, min( 1024, absint( $input ) ) );
+	}
+
+	/**
+	 * Render the log level select field.
+	 */
+	public function render_log_level_field() {
+		$value = Bale_Logger::get_log_level();
+		?>
+		<select name="bale_connector_log_level" id="bale_connector_log_level">
+			<option value="all" <?php selected( 'all', $value ); ?>><?php esc_html_e( 'Log all sends (success and failed)', 'bale-connector' ); ?></option>
+			<option value="failed_only" <?php selected( 'failed_only', $value ); ?>><?php esc_html_e( 'Log failed sends only', 'bale-connector' ); ?></option>
+		</select>
+		<p class="description">
+			<?php esc_html_e( 'Choose which send attempts are stored in the logs table.', 'bale-connector' ); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Render the log retention cap field.
+	 */
+	public function render_log_retention_field() {
+		$value = (int) get_option( 'bale_connector_log_retention_mb', 5 );
+		?>
+		<input type="number"
+			   name="bale_connector_log_retention_mb"
+			   id="bale_connector_log_retention_mb"
+			   value="<?php echo esc_attr( $value ); ?>"
+			   min="0"
+			   max="1024"
+			   step="1"
+			   class="small-text" />
+		<?php esc_html_e( 'MB', 'bale-connector' ); ?>
+		<p class="description">
+			<?php esc_html_e( 'Oldest logs are pruned automatically once storage exceeds this size. Set 0 to keep logs indefinitely.', 'bale-connector' ); ?>
+		</p>
+		<?php
+	}
+
+	/**
 	 * Render settings page.
 	 */
 	public function render_settings_page() {
@@ -286,7 +380,9 @@ class Bale_Admin {
 	}
 
 	/**
-	 * Render logs page placeholder.
+	 * Render logs page.
+	 *
+	 * @return void
 	 */
 	public function render_logs_page() {
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -294,6 +390,153 @@ class Bale_Admin {
 		}
 
 		require_once BALE_CONNECTOR_PLUGIN_DIR . 'admin/views/logs-page.php';
+	}
+
+	/**
+	 * Handle log deletion POSTs (single, bulk, delete-all).
+	 *
+	 * SECURITY: deletion is never performed via GET links — every path is a
+	 * POST request verified with check_admin_referer() (CSRF-safe, immune to
+	 * link prefetchers) and gated by current_user_can( 'manage_options' ).
+	 * Ends with POST-Redirect-GET so a refresh cannot replay a delete.
+	 *
+	 * This method is a THIN wrapper: it only parses $_POST onto the internal
+	 * action vocabulary and owns the redirect/exit. All security checks and
+	 * the deletion itself live in process_log_delete(), which the tests
+	 * exercise directly — one code path for both.
+	 */
+	public function handle_log_actions() {
+		$is_custom_post = isset( $_POST['bale_log_action'] );
+		$bulk_action    = '';
+
+		if ( ! $is_custom_post && isset( $_POST['action'], $_POST['action2'] ) ) {
+			// Standard WP_List_Table bulk dropdown (top + bottom selects).
+			$top    = sanitize_key( wp_unslash( $_POST['action'] ) );
+			$bottom = sanitize_key( wp_unslash( $_POST['action2'] ) );
+
+			if ( '-1' !== $top && '' !== $top ) {
+				$bulk_action = $top;
+			} elseif ( '-1' !== $bottom && '' !== $bottom ) {
+				$bulk_action = $bottom;
+			}
+		}
+
+		if ( ! $is_custom_post && '' === $bulk_action ) {
+			return; // Nothing to do — normal admin page load.
+		}
+
+		// Map the request onto the shared internal action vocabulary.
+		$post_snapshot = wp_unslash( $_POST );
+
+		if ( '' !== $bulk_action ) {
+			if ( 'bale_delete_logs' === $bulk_action ) {
+				$internal_action = 'delete_bulk';
+			} elseif ( 'bale_delete_all_logs' === $bulk_action ) {
+				$internal_action = 'delete_all';
+			} else {
+				return; // Unknown bulk action: ignore.
+			}
+		} else {
+			$internal_action = sanitize_key( (string) $post_snapshot['bale_log_action'] );
+		}
+
+		// Shared core: capability check + nonce verification + deletion.
+		$deleted = $this->process_log_delete( $internal_action, $post_snapshot );
+
+		if ( null === $deleted ) {
+			return; // Unknown action: no redirect, no deletion.
+		}
+
+		// Total the user asked about (for the success notice).
+		switch ( $internal_action ) {
+			case 'delete':
+				$total = 1;
+				break;
+			case 'delete_bulk':
+				$total = isset( $post_snapshot['log_ids'] ) ? count( (array) $post_snapshot['log_ids'] ) : 0;
+				break;
+			default:
+				$total = $deleted; // delete_all reports what it actually removed.
+				break;
+		}
+
+		wp_safe_redirect( add_query_arg( array(
+			'bale_deleted' => $deleted,
+			'bale_total'   => $total,
+		), admin_url( 'admin.php?page=bale-connector-logs' ) ) );
+		exit;
+	}
+
+	/**
+	 * Shared core of the log-delete handlers.
+	 *
+	 * Performs the capability check, nonce verification and the deletion
+	 * itself, and RETURNS the deleted count instead of redirecting/exiting
+	 * — the HTTP wrapper handle_log_actions() owns redirect/exit. This is
+	 * the ONLY place dispatch + security + deletion live, so tests that
+	 * exercise it cover the exact code path real admin requests take.
+	 *
+	 * Nonce failure dies with -1 (check_admin_referer semantics); a failed
+	 * capability check dies with 0 — both observable in tests via a
+	 * throwing wp_die() mock.
+	 *
+	 * @param string $action One of 'delete', 'delete_bulk', 'delete_all'.
+	 * @param array  $post   Emulated $_POST subset (already unslashed).
+	 * @return int|null Number of rows deleted, or null for an unknown action.
+	 */
+	public function process_log_delete( $action, $post ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'bale-connector' ) );
+		}
+
+		$nonce_action_map = array(
+			'delete'      => 'bale_delete_log',
+			'delete_bulk' => 'bale_bulk_logs',
+			'delete_all'  => 'bale_delete_all_logs',
+		);
+
+		$action = sanitize_key( (string) $action );
+
+		if ( ! isset( $nonce_action_map[ $action ] ) ) {
+			return null; // Unknown action: nothing to verify, nothing to delete.
+		}
+
+		check_admin_referer( $nonce_action_map[ $action ], 'bale_log_nonce' );
+
+		switch ( $action ) {
+			case 'delete':
+				$id = isset( $post['log_id'] ) ? absint( $post['log_id'] ) : 0;
+				return $id ? Bale_Logger::delete_by_ids( $id ) : 0;
+
+			case 'delete_bulk':
+				$ids = isset( $post['log_ids'] ) ? array_map( 'absint', (array) $post['log_ids'] ) : array();
+				return Bale_Logger::delete_by_ids( $ids );
+
+			case 'delete_all':
+				return Bale_Logger::delete_all();
+		}
+
+		return 0;
+	}
+
+	/**
+	 * Render admin notices for completed log deletions.
+	 */
+	public function render_log_action_notices() {
+		if ( isset( $_GET['bale_deleted'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only feedback, no state change.
+			$deleted = absint( $_GET['bale_deleted'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$total   = isset( $_GET['bale_total'] ) ? absint( $_GET['bale_total'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+			$message = ( 1 === $total )
+				? __( 'Log entry deleted.', 'bale-connector' )
+				: sprintf(
+					/* translators: %s: number of deleted log entries */
+					__( '%s log entries deleted.', 'bale-connector' ),
+					number_format_i18n( $deleted )
+				);
+
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $message ) . '</p></div>';
+		}
 	}
 
 	/**
@@ -313,6 +556,35 @@ class Bale_Admin {
 			array(),
 			BALE_CONNECTOR_VERSION
 		);
+
+		if ( false !== strpos( $hook, 'bale-connector-logs' ) ) {
+			wp_enqueue_style(
+				'bale-connector-logs',
+				BALE_CONNECTOR_PLUGIN_URL . 'admin/css/logs.css',
+				array( 'bale-connector-admin' ),
+				BALE_CONNECTOR_VERSION
+			);
+
+			wp_enqueue_script(
+				'bale-connector-logs',
+				BALE_CONNECTOR_PLUGIN_URL . 'admin/js/logs.js',
+				array(),
+				BALE_CONNECTOR_VERSION,
+				true
+			);
+
+			wp_localize_script(
+				'bale-connector-logs',
+				'baleConnectorLogs',
+				array(
+					'i18n' => array(
+						'confirmDelete'     => __( 'Delete this log entry? This cannot be undone.', 'bale-connector' ),
+						'confirmBulkDelete' => __( 'Delete the selected log entries? This cannot be undone.', 'bale-connector' ),
+						'confirmDeleteAll'  => __( 'Delete ALL log entries? This cannot be undone.', 'bale-connector' ),
+					),
+				)
+			);
+		}
 
 		if ( false !== strpos( $hook, 'bale-connector-recipients' ) ) {
 			wp_enqueue_script(

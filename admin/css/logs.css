@@ -1,0 +1,107 @@
+/**
+ * Bale Connector — Logs screen styles.
+ */
+
+/* Filter bar */
+.bale-log-filters {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin: 8px 0 16px;
+}
+
+.bale-log-filters input[type="text"] {
+	width: 130px;
+}
+
+.bale-log-filters select {
+	max-width: 220px;
+}
+
+/* Status badges */
+.bale-log-badge {
+	display: inline-block;
+	padding: 2px 10px;
+	border-radius: 12px;
+	font-size: 12px;
+	line-height: 1.6;
+	font-weight: 600;
+}
+
+.bale-log-badge-success {
+	background: #edfaef;
+	color: #1c7c3c;
+	border: 1px solid #b8e6c3;
+}
+
+.bale-log-badge-failed {
+	background: #fcf0f1;
+	color: #b32d2e;
+	border: 1px solid #f1c8c9;
+}
+
+/* JSON cells */
+.bale-log-json {
+	max-width: 360px;
+	overflow-wrap: anywhere;
+}
+
+.bale-log-json-preview {
+	display: block;
+	color: #50575e;
+}
+
+.bale-log-json-full {
+	display: block;
+	margin: 6px 0;
+	padding: 10px;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	max-height: 320px;
+	overflow: auto;
+	direction: ltr;
+	text-align: left;
+	font-size: 12px;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+/* Toggle / row action buttons */
+.bale-log-toggle,
+.bale-row-delete-btn {
+	cursor: pointer;
+}
+
+.bale-row-delete-btn {
+	color: #b32d2e;
+}
+
+.bale-row-delete-btn:hover {
+	color: #8a2424;
+}
+
+.bale-row-delete-form {
+	display: inline;
+}
+
+/* Delete All form */
+.bale-delete-all-form {
+	margin-top: 16px;
+}
+
+.bale-delete-all {
+	color: #b32d2e;
+	border-color: #b32d2e !important;
+}
+
+.bale-delete-all:hover {
+	background: #fcf0f1;
+}
+
+/* RTL friendliness: Persian admins keep a readable, logical layout. */
+body.rtl .bale-log-json-full {
+	text-align: left;
+	direction: ltr;
+}

@@ -30,6 +30,7 @@ require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-security.php';
 require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-api-client.php';
 require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-recipients.php';
 require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-logger.php';
+require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-log-list-table.php';
 require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-template.php';
 require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-cf7-form-settings.php';
 require_once BALE_CONNECTOR_PLUGIN_DIR . 'includes/class-bale-cf7-integration.php';
@@ -106,6 +107,13 @@ function bale_connector_init() {
 	// version-negotiating bootstrap (see class docblock). Safe alongside
 	// WooCommerce or a standalone Action Scheduler plugin.
 	Bale_Action_Scheduler_Loader::init();
+
+	// Daily retention sweep for the logs table (Action Scheduler, not wp-cron).
+	add_action( 'init', array( 'Bale_Logger', 'schedule_daily_sweep' ), 20 );
+	add_action( 'bale_connector_retention_sweep', array( 'Bale_Logger', 'run_daily_sweep' ) );
+
+	// First admin load after a plugin update: apply pending schema upgrades.
+	add_action( 'admin_init', array( 'Bale_Installer', 'maybe_upgrade' ) );
 
 	$cf7_integration = new Bale_CF7_Integration();
 	$cf7_integration->register();

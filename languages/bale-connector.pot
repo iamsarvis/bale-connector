@@ -1,5 +1,5 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# Copyright (C) YEAR Sobhan
 # This file is distributed under the same license as the Bale Connector package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Bale Connector 1.0.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/bale-connector\n"
-"POT-Creation-Date: 2026-08-30 11:32+0330\n"
+"POT-Creation-Date: 2026-09-01 12:50+0330\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,252 +17,64 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: bale-connector.php:76
+#: bale-connector.php:77
 #, php-format
 msgid ""
 "Bale Connector requires PHP %1$s+ (current: %2$s) and WordPress %3$s+ "
 "(current: %4$s). The plugin has been deactivated."
 msgstr ""
 
-#: bale-connector.php:135 bale-connector.php:144
+#: bale-connector.php:143 bale-connector.php:152
+msgctxt "bale-connector"
 msgid ""
 "No Bale bot token is configured. Please set your token on the Settings page."
 msgstr ""
 
-#: bale-connector.php:151
+#: bale-connector.php:159
+msgctxt "bale-connector"
 msgid ""
 "Unable to decrypt the stored bot token. The encryption key may have changed "
 "or been corrupted."
 msgstr ""
 
-#: bale-connector.php:296
+#: bale-connector.php:304
 #, php-format
+msgctxt "bale-connector"
 msgid "Connected to bot @%1$s (id: %2$s, name: %3$s)"
 msgstr ""
 
-#: includes/class-bale-admin.php:46
-#, php-format
-msgid ""
-"Bale Connector was unable to decrypt your Bot Token (the encryption key may "
-"have changed or corrupted). Please <a href=\"%s\">re-enter your Bot Token</"
-"a>."
-msgstr ""
-
-#: includes/class-bale-admin.php:58 includes/class-bale-admin.php:59
-msgid "Bale Connector"
-msgstr ""
-
-#: includes/class-bale-admin.php:69 includes/class-bale-admin.php:70
-msgid "Settings"
-msgstr ""
-
-#: includes/class-bale-admin.php:78 includes/class-bale-admin.php:79
-#: admin/views/cf7-panel.php:27
-msgid "Recipients"
-msgstr ""
-
-#: includes/class-bale-admin.php:87 includes/class-bale-admin.php:88
-msgid "Logs"
-msgstr ""
-
-#: includes/class-bale-admin.php:121
-msgid "General Settings"
-msgstr ""
-
-#: includes/class-bale-admin.php:128
-msgid "Bot Token"
-msgstr ""
-
-#: includes/class-bale-admin.php:136
-msgid "Keep Data on Uninstall"
-msgstr ""
-
-#: includes/class-bale-admin.php:173
-msgid ""
-"Invalid Bot Token format. It typically looks like: 123456789:"
-"ABCDefGhIJKlmNoPQRsTUVwxyZ"
-msgstr ""
-
-#: includes/class-bale-admin.php:184
-msgid ""
-"No supported cryptographic extension (libsodium or OpenSSL) is available on "
-"this server. The token cannot be securely stored."
-msgstr ""
-
-#: includes/class-bale-admin.php:195
-msgid ""
-"Failed to securely encrypt the Bot Token. Please check server permissions or "
-"logs."
-msgstr ""
-
-#: includes/class-bale-admin.php:218
-msgid "Configure your Bale Bot API connection settings."
-msgstr ""
-
-#: includes/class-bale-admin.php:240
-msgid "Enter your bot token from @BotFather"
-msgstr ""
-
-#: includes/class-bale-admin.php:244
-msgid "The token is encrypted securely before being stored in the database."
-msgstr ""
-
-#: includes/class-bale-admin.php:261
-msgid "Preserve recipients and logs if the plugin is uninstalled."
-msgstr ""
-
-#: includes/class-bale-admin.php:271 includes/class-bale-admin.php:282
-#: includes/class-bale-admin.php:293
-msgid "You do not have sufficient permissions to access this page."
-msgstr ""
-
-#: includes/class-bale-admin.php:333
-msgid "Are you sure you want to delete this recipient?"
-msgstr ""
-
-#: includes/class-bale-admin.php:334
-msgid "Testing..."
-msgstr ""
-
-#: includes/class-bale-admin.php:335 includes/class-bale-cf7-admin-panel.php:78
-msgid "Saving..."
-msgstr ""
-
-#: includes/class-bale-admin.php:336 admin/views/recipients-page.php:63
-msgid "Save Recipient"
-msgstr ""
-
-#: includes/class-bale-admin.php:337
-msgid "Update Recipient"
-msgstr ""
-
-#: includes/class-bale-admin.php:338 admin/views/recipients-page.php:23
-msgid "Add New Recipient"
-msgstr ""
-
-#: includes/class-bale-admin.php:339
-msgid "Edit Recipient"
-msgstr ""
-
-#: includes/class-bale-admin.php:340 admin/views/recipients-page.php:66
-msgid "Cancel"
-msgstr ""
-
-#: includes/class-bale-admin.php:341 includes/class-bale-cf7-admin-panel.php:81
-msgid "An unexpected error occurred. Please try again."
-msgstr ""
-
-#: includes/class-bale-admin.php:355 includes/class-bale-admin.php:406
-#: includes/class-bale-admin.php:436
-#: includes/class-bale-cf7-admin-panel.php:135
-msgid "Permission denied."
-msgstr ""
-
-#: includes/class-bale-admin.php:378
-msgid "Recipient updated successfully."
-msgstr ""
-
-#: includes/class-bale-admin.php:391
-msgid "Recipient added successfully."
-msgstr ""
-
-#: includes/class-bale-admin.php:412 includes/class-bale-admin.php:442
-#: includes/class-bale-recipients.php:169
-#: includes/class-bale-recipients.php:241
-msgid "Invalid recipient ID."
-msgstr ""
-
-#: includes/class-bale-admin.php:423
-msgid "Recipient deleted successfully."
-msgstr ""
-
-#: includes/class-bale-admin.php:448
-#: includes/class-bale-cf7-admin-panel.php:223
-#: includes/class-bale-recipients.php:177
-msgid "Recipient not found."
-msgstr ""
-
-#: includes/class-bale-admin.php:471
-msgid "Connection verified successfully."
-msgstr ""
-
-#: includes/class-bale-api-client.php:137
-msgid "user_id is required and must be numeric."
-msgstr ""
-
-#: includes/class-bale-api-client.php:334
-#, php-format
-msgid "Bale API returned an invalid (non-JSON) response for %1$s (HTTP %2$d)."
-msgstr ""
-
-#: includes/class-bale-api-client.php:351
-#, php-format
-msgid "Bale API call to %s succeeded but returned no result field."
-msgstr ""
-
-#: includes/class-bale-api-client.php:390
-#, php-format
-msgid "File not found: %s"
-msgstr ""
-
-#: includes/class-bale-api-client.php:402
-#, php-format
-msgid "File is not readable: %s"
-msgstr ""
-
-#: includes/class-bale-api-client.php:416
-#, php-format
-msgid "Unable to determine file size: %s"
-msgstr ""
-
-#: includes/class-bale-api-client.php:429
-#, php-format
-msgid ""
-"File size (%1$s bytes) exceeds the maximum allowed (%2$s bytes) for Bale API "
-"uploads: %3$s"
-msgstr ""
-
-#: includes/class-bale-api-client.php:448
-#, php-format
-msgid "Failed to read file contents: %s"
-msgstr ""
-
-#: includes/class-bale-api-client.php:516
-msgid "chat_id is required and cannot be empty."
-msgstr ""
-
-#: includes/class-bale-api-client.php:534
-#, php-format
-msgid "Invalid chat_id format: %s. Must be an integer or @username string."
-msgstr ""
-
-#: includes/class-bale-api-client.php:561
-#, php-format
-msgid "%1$s length (%2$d) exceeds the maximum allowed (%3$d) for the Bale API."
-msgstr ""
-
-#: includes/class-bale-api-client.php:618
-#, php-format
-msgid "Bale API call to %1$s failed (HTTP %2$d)."
-msgstr ""
-
-#: includes/class-bale-cf7-admin-panel.php:46 admin/views/cf7-panel.php:17
+#: includes/class-bale-cf7-admin-panel.php:57
+msgctxt "bale-connector"
 msgid "Bale Notification"
 msgstr ""
 
-#: includes/class-bale-cf7-admin-panel.php:79
+#: includes/class-bale-cf7-admin-panel.php:94 includes/class-bale-admin.php:624
+msgctxt "bale-connector"
+msgid "Saving..."
+msgstr ""
+
+#: includes/class-bale-cf7-admin-panel.php:95
+msgctxt "bale-connector"
 msgid "Saved."
 msgstr ""
 
-#: includes/class-bale-cf7-admin-panel.php:80
+#: includes/class-bale-cf7-admin-panel.php:96
+msgctxt "bale-connector"
 msgid "Sending test message..."
 msgstr ""
 
-#: includes/class-bale-cf7-admin-panel.php:82
+#: includes/class-bale-cf7-admin-panel.php:97 includes/class-bale-admin.php:630
+msgctxt "bale-connector"
+msgid "An unexpected error occurred. Please try again."
+msgstr ""
+
+#: includes/class-bale-cf7-admin-panel.php:98
+msgctxt "bale-connector"
 msgid "Template exceeds the 4096 character Bale limit."
 msgstr ""
 
-#: includes/class-bale-cf7-admin-panel.php:122
+#: includes/class-bale-cf7-admin-panel.php:138
+msgctxt "bale-connector"
 msgid ""
 "New form submission\n"
 "Form: [form-title]\n"
@@ -270,165 +82,512 @@ msgid ""
 "Message: [your-message]"
 msgstr ""
 
-#: includes/class-bale-cf7-admin-panel.php:149
-msgid "Invalid form ID."
+#: includes/class-bale-cf7-admin-panel.php:151
+#: includes/class-bale-admin.php:644 includes/class-bale-admin.php:695
+#: includes/class-bale-admin.php:725
+msgctxt "bale-connector"
+msgid "Permission denied."
 msgstr ""
 
-#: includes/class-bale-cf7-admin-panel.php:168
-msgid "Could not save settings. Please try again."
-msgstr ""
-
-#: includes/class-bale-cf7-admin-panel.php:171
-msgid "Bale notification settings saved."
-msgstr ""
-
-#: includes/class-bale-cf7-admin-panel.php:188
+#: includes/class-bale-cf7-admin-panel.php:229
+msgctxt "bale-connector"
 msgid "Sample subject"
 msgstr ""
 
-#: includes/class-bale-cf7-admin-panel.php:189
+#: includes/class-bale-cf7-admin-panel.php:230
+msgctxt "bale-connector"
 msgid "This is a preview message."
 msgstr ""
 
-#: includes/class-bale-cf7-admin-panel.php:231
+#: includes/class-bale-cf7-admin-panel.php:264
+#: includes/class-bale-admin.php:737 includes/class-bale-recipients.php:177
+msgctxt "bale-connector"
+msgid "Recipient not found."
+msgstr ""
+
+#: includes/class-bale-cf7-admin-panel.php:272
+msgctxt "bale-connector"
 msgid "[Bale Connector] Test message — your form settings work!"
 msgstr ""
 
-#: includes/class-bale-cf7-admin-panel.php:252
+#: includes/class-bale-cf7-admin-panel.php:293
+msgctxt "bale-connector"
 msgid "Test message delivered to Bale."
 msgstr ""
 
 #: includes/class-bale-cf7-integration.php:301
+msgctxt "bale-connector"
 msgid "No valid recipients configured for this form."
 msgstr ""
 
-#: includes/class-bale-installer.php:26
-#, php-format
-msgid ""
-"Bale Connector requires PHP %1$s+ (current: %2$s) and WordPress %3$s+ "
-"(current: %4$s)."
-msgstr ""
-
-#: includes/class-bale-installer.php:32
-msgid "Plugin Activation Error"
-msgstr ""
-
-#: includes/class-bale-logger.php:62
+#: includes/class-bale-logger.php:72
+msgctxt "bale-connector"
 msgid "Trigger slug is required and cannot be empty."
 msgstr ""
 
-#: includes/class-bale-logger.php:69
+#: includes/class-bale-logger.php:79
+msgctxt "bale-connector"
 msgid "Trigger args are required and must be an array."
 msgstr ""
 
-#: includes/class-bale-logger.php:78
+#: includes/class-bale-logger.php:88
 #, php-format
+msgctxt "bale-connector"
 msgid "Trigger \"%s\" is already registered."
 msgstr ""
 
-#: includes/class-bale-logger.php:158
+#: includes/class-bale-logger.php:171
+msgctxt "bale-connector"
 msgid "Log entry source_type is required."
 msgstr ""
 
-#: includes/class-bale-logger.php:169
+#: includes/class-bale-logger.php:182
 #, php-format
+msgctxt "bale-connector"
 msgid ""
 "Unknown log source_type \"%s\". Register the trigger first via "
 "bale_connector_register_trigger()."
 msgstr ""
 
-#: includes/class-bale-logger.php:179
+#: includes/class-bale-logger.php:192
+msgctxt "bale-connector"
 msgid "Log entry recipient_chat_id is required."
 msgstr ""
 
-#: includes/class-bale-logger.php:209
+#: includes/class-bale-logger.php:227
+msgctxt "bale-connector"
 msgid "Failed to write to the Bale Connector logs table."
+msgstr ""
+
+#: includes/class-bale-admin.php:47
+#, php-format
+msgctxt "bale-connector"
+msgid ""
+"Bale Connector was unable to decrypt your Bot Token (the encryption key may "
+"have changed or corrupted). Please <a href=\"%s\">re-enter your Bot Token</"
+"a>."
+msgstr ""
+
+#: includes/class-bale-admin.php:59 includes/class-bale-admin.php:60
+msgctxt "bale-connector"
+msgid "Bale Connector"
+msgstr ""
+
+#: includes/class-bale-admin.php:70 includes/class-bale-admin.php:71
+msgctxt "bale-connector"
+msgid "Settings"
+msgstr ""
+
+#: includes/class-bale-admin.php:79 includes/class-bale-admin.php:80
+msgctxt "bale-connector"
+msgid "Recipients"
+msgstr ""
+
+#: includes/class-bale-admin.php:88 includes/class-bale-admin.php:89
+msgctxt "bale-connector"
+msgid "Logs"
+msgstr ""
+
+#: includes/class-bale-admin.php:142
+msgctxt "bale-connector"
+msgid "General Settings"
+msgstr ""
+
+#: includes/class-bale-admin.php:149
+msgctxt "bale-connector"
+msgid "Bot Token"
+msgstr ""
+
+#: includes/class-bale-admin.php:157
+msgctxt "bale-connector"
+msgid "Keep Data on Uninstall"
+msgstr ""
+
+#: includes/class-bale-admin.php:165
+msgctxt "bale-connector"
+msgid "Log Level"
+msgstr ""
+
+#: includes/class-bale-admin.php:173
+msgctxt "bale-connector"
+msgid "Log Storage Cap (MB)"
+msgstr ""
+
+#: includes/class-bale-admin.php:210
+msgctxt "bale-connector"
+msgid ""
+"Invalid Bot Token format. It typically looks like: 123456789:"
+"ABCDefGhIJKlmNoPQRsTUVwxyZ"
+msgstr ""
+
+#: includes/class-bale-admin.php:221
+msgctxt "bale-connector"
+msgid ""
+"No supported cryptographic extension (libsodium or OpenSSL) is available on "
+"this server. The token cannot be securely stored."
+msgstr ""
+
+#: includes/class-bale-admin.php:232
+msgctxt "bale-connector"
+msgid ""
+"Failed to securely encrypt the Bot Token. Please check server permissions or "
+"logs."
+msgstr ""
+
+#: includes/class-bale-admin.php:255
+msgid "Configure your Bale Bot API connection settings."
+msgstr ""
+
+#: includes/class-bale-admin.php:277
+msgid "Enter your bot token from @BotFather"
+msgstr ""
+
+#: includes/class-bale-admin.php:281
+msgid "The token is encrypted securely before being stored in the database."
+msgstr ""
+
+#: includes/class-bale-admin.php:298
+msgid "Preserve recipients and logs if the plugin is uninstalled."
+msgstr ""
+
+#: includes/class-bale-admin.php:330
+msgid "Log all sends (success and failed)"
+msgstr ""
+
+#: includes/class-bale-admin.php:331
+msgid "Log failed sends only"
+msgstr ""
+
+#: includes/class-bale-admin.php:334
+msgid "Choose which send attempts are stored in the logs table."
+msgstr ""
+
+#: includes/class-bale-admin.php:353
+msgid "MB"
+msgstr ""
+
+#: includes/class-bale-admin.php:355
+msgid ""
+"Oldest logs are pruned automatically once storage exceeds this size. Set 0 "
+"to keep logs indefinitely."
+msgstr ""
+
+#: includes/class-bale-admin.php:365 includes/class-bale-admin.php:376
+#: includes/class-bale-admin.php:389 includes/class-bale-admin.php:424
+#: includes/class-bale-admin.php:506
+msgid "You do not have sufficient permissions to access this page."
+msgstr ""
+
+#: includes/class-bale-admin.php:548
+msgctxt "bale-connector"
+msgid "Log entry deleted."
+msgstr ""
+
+#: includes/class-bale-admin.php:551
+#, php-format
+msgctxt "bale-connector"
+msgid "%s log entries deleted."
+msgstr ""
+
+#: includes/class-bale-admin.php:598
+msgctxt "bale-connector"
+msgid "Delete this log entry? This cannot be undone."
+msgstr ""
+
+#: includes/class-bale-admin.php:599
+msgctxt "bale-connector"
+msgid "Delete the selected log entries? This cannot be undone."
+msgstr ""
+
+#: includes/class-bale-admin.php:600
+msgctxt "bale-connector"
+msgid "Delete ALL log entries? This cannot be undone."
+msgstr ""
+
+#: includes/class-bale-admin.php:622
+msgctxt "bale-connector"
+msgid "Are you sure you want to delete this recipient?"
+msgstr ""
+
+#: includes/class-bale-admin.php:623
+msgctxt "bale-connector"
+msgid "Testing..."
+msgstr ""
+
+#: includes/class-bale-admin.php:625
+msgctxt "bale-connector"
+msgid "Save Recipient"
+msgstr ""
+
+#: includes/class-bale-admin.php:626
+msgctxt "bale-connector"
+msgid "Update Recipient"
+msgstr ""
+
+#: includes/class-bale-admin.php:627
+msgctxt "bale-connector"
+msgid "Add New Recipient"
+msgstr ""
+
+#: includes/class-bale-admin.php:628
+msgctxt "bale-connector"
+msgid "Edit Recipient"
+msgstr ""
+
+#: includes/class-bale-admin.php:629
+msgctxt "bale-connector"
+msgid "Cancel"
+msgstr ""
+
+#: includes/class-bale-admin.php:667
+msgctxt "bale-connector"
+msgid "Recipient updated successfully."
+msgstr ""
+
+#: includes/class-bale-admin.php:680
+msgctxt "bale-connector"
+msgid "Recipient added successfully."
+msgstr ""
+
+#: includes/class-bale-admin.php:701 includes/class-bale-admin.php:731
+#: includes/class-bale-recipients.php:169
+#: includes/class-bale-recipients.php:241
+msgctxt "bale-connector"
+msgid "Invalid recipient ID."
+msgstr ""
+
+#: includes/class-bale-admin.php:712
+msgctxt "bale-connector"
+msgid "Recipient deleted successfully."
+msgstr ""
+
+#: includes/class-bale-admin.php:760
+msgctxt "bale-connector"
+msgid "Connection verified successfully."
+msgstr ""
+
+#: includes/class-bale-installer.php:44
+#, php-format
+msgctxt "bale-connector"
+msgid ""
+"Bale Connector requires PHP %1$s+ (current: %2$s) and WordPress %3$s+ "
+"(current: %4$s)."
+msgstr ""
+
+#: includes/class-bale-installer.php:50
+msgid "Plugin Activation Error"
+msgstr ""
+
+#: includes/class-bale-api-client.php:137
+msgctxt "bale-connector"
+msgid "user_id is required and must be numeric."
+msgstr ""
+
+#: includes/class-bale-api-client.php:334
+#, php-format
+msgctxt "bale-connector"
+msgid "Bale API returned an invalid (non-JSON) response for %1$s (HTTP %2$d)."
+msgstr ""
+
+#: includes/class-bale-api-client.php:351
+#, php-format
+msgctxt "bale-connector"
+msgid "Bale API call to %s succeeded but returned no result field."
+msgstr ""
+
+#: includes/class-bale-api-client.php:390
+#, php-format
+msgctxt "bale-connector"
+msgid "File not found: %s"
+msgstr ""
+
+#: includes/class-bale-api-client.php:402
+#, php-format
+msgctxt "bale-connector"
+msgid "File is not readable: %s"
+msgstr ""
+
+#: includes/class-bale-api-client.php:416
+#, php-format
+msgctxt "bale-connector"
+msgid "Unable to determine file size: %s"
+msgstr ""
+
+#: includes/class-bale-api-client.php:429
+#, php-format
+msgctxt "bale-connector"
+msgid ""
+"File size (%1$s bytes) exceeds the maximum allowed (%2$s bytes) for Bale API "
+"uploads: %3$s"
+msgstr ""
+
+#: includes/class-bale-api-client.php:448
+#, php-format
+msgctxt "bale-connector"
+msgid "Failed to read file contents: %s"
+msgstr ""
+
+#: includes/class-bale-api-client.php:516
+msgctxt "bale-connector"
+msgid "chat_id is required and cannot be empty."
+msgstr ""
+
+#: includes/class-bale-api-client.php:534
+#, php-format
+msgctxt "bale-connector"
+msgid "Invalid chat_id format: %s. Must be an integer or @username string."
+msgstr ""
+
+#: includes/class-bale-api-client.php:561
+#, php-format
+msgctxt "bale-connector"
+msgid "%1$s length (%2$d) exceeds the maximum allowed (%3$d) for the Bale API."
+msgstr ""
+
+#: includes/class-bale-api-client.php:618
+#, php-format
+msgctxt "bale-connector"
+msgid "Bale API call to %1$s failed (HTTP %2$d)."
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:79
+msgctxt "bale-connector"
+msgid "Contact Form 7"
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:165
+msgctxt "bale-connector"
+msgid "Date"
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:166
+msgctxt "bale-connector"
+msgid "Source"
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:167
+msgctxt "bale-connector"
+msgid "Ref"
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:168
+msgctxt "bale-connector"
+msgid "Recipient"
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:169
+msgctxt "bale-connector"
+msgid "Status"
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:170
+msgctxt "bale-connector"
+msgid "Payload"
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:171
+msgctxt "bale-connector"
+msgid "Response"
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:172
+msgctxt "bale-connector"
+msgid "Actions"
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:197
+msgctxt "bale-connector"
+msgid "Delete"
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:198
+msgctxt "bale-connector"
+msgid "Delete All Logs"
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:273
+#: includes/class-bale-log-list-table.php:427
+msgid "Success"
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:277
+#: includes/class-bale-log-list-table.php:428
+msgid "Failed"
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:349
+msgid "Show more"
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:374
+#: admin/views/recipients-page.php:135
+msgid "Delete"
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:402
+msgid "No log entries found."
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:420
+msgid "All sources"
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:426
+msgid "All statuses"
+msgstr ""
+
+#: includes/class-bale-log-list-table.php:431
+msgctxt "bale-connector"
+msgid "Filter"
 msgstr ""
 
 #: includes/class-bale-recipients.php:110
 #: includes/class-bale-recipients.php:188
+msgctxt "bale-connector"
 msgid "Recipient label is required."
 msgstr ""
 
 #: includes/class-bale-recipients.php:117
 #: includes/class-bale-recipients.php:195
+msgctxt "bale-connector"
 msgid "Invalid recipient type. Must be user, group, or channel."
 msgstr ""
 
 #: includes/class-bale-recipients.php:145
+msgctxt "bale-connector"
 msgid "Failed to save recipient to database."
 msgstr ""
 
 #: includes/class-bale-recipients.php:221
+msgctxt "bale-connector"
 msgid "Failed to update recipient in database."
 msgstr ""
 
 #: includes/class-bale-recipients.php:255
+msgctxt "bale-connector"
 msgid "Failed to delete recipient from database."
 msgstr ""
 
 #: includes/class-bale-recipients.php:327
+msgctxt "bale-connector"
 msgid "Please configure your Bot Token first."
 msgstr ""
 
 #: includes/class-bale-recipients.php:387
+msgctxt "bale-connector"
 msgid "Could not verify the bot identity (getMe failed): "
 msgstr ""
 
 #: includes/class-bale-recipients.php:398
+msgctxt "bale-connector"
 msgid "Could not determine the bot user ID (getMe returned no id)."
 msgstr ""
 
 #: includes/class-bale-recipients.php:407
+msgctxt "bale-connector"
 msgid ""
 "This chat_id is valid, but the bot is not currently a member of this group/"
 "channel — please add it first."
-msgstr ""
-
-#: admin/views/cf7-panel.php:18
-msgid ""
-"Send a Bale message to your recipients whenever this form is successfully "
-"submitted."
-msgstr ""
-
-#: admin/views/cf7-panel.php:23
-msgid "Send a Bale message when this form is submitted"
-msgstr ""
-
-#: admin/views/cf7-panel.php:35
-#, php-format
-msgid "No recipients defined yet. <a href=\"%s\">Add recipients</a> first."
-msgstr ""
-
-#: admin/views/cf7-panel.php:61
-msgid "Message Template"
-msgstr ""
-
-#: admin/views/cf7-panel.php:67
-#, php-format
-msgid ""
-"Use %1$s tags and at most three formatting constructs: %2$s bold, %3$s "
-"italic, %4$s link. Submitted field values always render as plain text."
-msgstr ""
-
-#: admin/views/cf7-panel.php:83
-msgid "Preview Message"
-msgstr ""
-
-#: admin/views/cf7-panel.php:86
-msgid "Test send to…"
-msgstr ""
-
-#: admin/views/cf7-panel.php:91
-msgid "Send Test"
-msgstr ""
-
-#: admin/views/logs-page.php:13
-msgid "Bale Delivery Logs"
-msgstr ""
-
-#: admin/views/logs-page.php:14
-msgid "View outbound message delivery statuses and payloads."
 msgstr ""
 
 #: admin/views/recipients-page.php:15
@@ -439,6 +598,10 @@ msgstr ""
 msgid ""
 "Manage your notification recipients (users, groups, and channels) and test "
 "their reachability."
+msgstr ""
+
+#: admin/views/recipients-page.php:23
+msgid "Add New Recipient"
 msgstr ""
 
 #: admin/views/recipients-page.php:28
@@ -461,11 +624,11 @@ msgstr ""
 msgid "Person (User)"
 msgstr ""
 
-#: admin/views/recipients-page.php:42 admin/views/recipients-page.php:100
+#: admin/views/recipients-page.php:42
 msgid "Group"
 msgstr ""
 
-#: admin/views/recipients-page.php:43 admin/views/recipients-page.php:102
+#: admin/views/recipients-page.php:43
 msgid "Channel"
 msgstr ""
 
@@ -483,6 +646,14 @@ msgstr ""
 
 #: admin/views/recipients-page.php:57
 msgid "User/Group numerical Chat ID, or @channelusername for public channels."
+msgstr ""
+
+#: admin/views/recipients-page.php:63
+msgid "Save Recipient"
+msgstr ""
+
+#: admin/views/recipients-page.php:66
+msgid "Cancel"
 msgstr ""
 
 #: admin/views/recipients-page.php:79
@@ -516,23 +687,38 @@ msgid ""
 msgstr ""
 
 #: admin/views/recipients-page.php:98
+msgctxt "bale-connector"
 msgid "Person"
 msgstr ""
 
+#: admin/views/recipients-page.php:100
+msgctxt "bale-connector"
+msgid "Group"
+msgstr ""
+
+#: admin/views/recipients-page.php:102
+msgctxt "bale-connector"
+msgid "Channel"
+msgstr ""
+
 #: admin/views/recipients-page.php:106
+msgctxt "bale-connector"
 msgid "Untested"
 msgstr ""
 
 #: admin/views/recipients-page.php:108
+msgctxt "bale-connector"
 msgid "Connected"
 msgstr ""
 
 #: admin/views/recipients-page.php:110
+msgctxt "bale-connector"
 msgid "Failed"
 msgstr ""
 
 #: admin/views/recipients-page.php:123
 #, php-format
+msgctxt "bale-connector"
 msgid "Last tested: %s"
 msgstr ""
 
@@ -544,10 +730,67 @@ msgstr ""
 msgid "Edit"
 msgstr ""
 
-#: admin/views/recipients-page.php:135
-msgid "Delete"
+#: admin/views/settings-page.php:19
+msgctxt "bale-connector"
+msgid "Save Changes"
 msgstr ""
 
-#: admin/views/settings-page.php:19
-msgid "Save Changes"
+#: admin/views/logs-page.php:22
+msgid "Bale Delivery Logs"
+msgstr ""
+
+#: admin/views/logs-page.php:23
+msgid "View outbound message delivery statuses and payloads."
+msgstr ""
+
+#: admin/views/logs-page.php:42
+msgid "Delete All Logs"
+msgstr ""
+
+#: admin/views/cf7-panel.php:17
+msgid "Bale Notification"
+msgstr ""
+
+#: admin/views/cf7-panel.php:18
+msgid ""
+"Send a Bale message to your recipients whenever this form is successfully "
+"submitted."
+msgstr ""
+
+#: admin/views/cf7-panel.php:23
+msgid "Send a Bale message when this form is submitted"
+msgstr ""
+
+#: admin/views/cf7-panel.php:27
+msgid "Recipients"
+msgstr ""
+
+#: admin/views/cf7-panel.php:35
+#, php-format
+msgctxt "bale-connector"
+msgid "No recipients defined yet. <a href=\"%s\">Add recipients</a> first."
+msgstr ""
+
+#: admin/views/cf7-panel.php:61
+msgid "Message Template"
+msgstr ""
+
+#: admin/views/cf7-panel.php:67
+#, php-format
+msgctxt "bale-connector"
+msgid ""
+"Use %1$s tags and at most three formatting constructs: %2$s bold, %3$s "
+"italic, %4$s link. Submitted field values always render as plain text."
+msgstr ""
+
+#: admin/views/cf7-panel.php:83
+msgid "Preview Message"
+msgstr ""
+
+#: admin/views/cf7-panel.php:86
+msgid "Test send to…"
+msgstr ""
+
+#: admin/views/cf7-panel.php:91
+msgid "Send Test"
 msgstr ""

@@ -2,3 +2,6 @@
 AGENTS.md
 bale-connector-roadmap.md
 
+# Compiled translation artifacts and test fixtures
+languages/*.mo
+/wp-admin/

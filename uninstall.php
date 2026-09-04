@@ -37,4 +37,8 @@ if ( '1' !== $keep_data ) {
 	delete_option( 'bale_connector_encryption_key' );
 	delete_option( 'bale_connector_keep_data_on_uninstall' );
 	delete_option( 'bale_connector_db_version' );
+	delete_option( 'bale_connector_log_level' );
+	delete_option( 'bale_connector_log_retention_mb' );
+	delete_option( 'bale_connector_last_retention_sweep' );
+	delete_option( 'bale_connector_logs_per_page' );
 }
