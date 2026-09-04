@@ -1694,4 +1694,25 @@ $found_by_date = Bale_Logger::query_items( array( 'date_from' => '2000-01-01', '
 expect_true( is_array( $found_by_date ), 'date-filtered query must return an array' );
 echo "[PASS] Filter queries execute through prepared statements.\n";
 
+// ==========================================
+// Test-harness cleanup: remove any wp-admin/includes/upgrade.php stub the
+// harness wrote earlier (it only exists because this environment lacks the
+// real WordPress file). Keeps the working tree clean between runs and
+// guarantees the stub can never leak into a manually-built release zip.
+// The REAL file in a WordPress install is never touched — it is only
+// removed when its content matches the known stub exactly.
+// ==========================================
+$stub_path = ABSPATH . 'wp-admin/includes/upgrade.php';
+if ( is_file( $stub_path )
+	&& 0 === strpos( (string) file_get_contents( $stub_path ), '<?php function dbDelta( $sql ) { $GLOBALS["bale_mock_dbdelta_sql"]' ) ) {
+	unlink( $stub_path );
+	// Remove now-empty directories the stub creation may have made.
+	foreach ( array( dirname( $stub_path ), dirname( dirname( $stub_path ) ) ) as $dir ) {
+		if ( is_dir( $dir ) && 0 === count( glob( $dir . '/*' ) ) ) {
+			@rmdir( $dir );
+		}
+	}
+	echo "[PASS] Test stub wp-admin/includes/upgrade.php removed; working tree clean.\n";
+}
+
 echo "ALL TESTS PASSED SUCCESSFULLY on PHP " . PHP_VERSION . "!\n";

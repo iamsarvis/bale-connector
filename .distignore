@@ -21,3 +21,5 @@
 /README.md
 /AGENTS.md
 /bale-connector-roadmap.md
+# Test-harness stub (wp-admin/includes/upgrade.php) — must never ship in a release zip
+/wp-admin/
