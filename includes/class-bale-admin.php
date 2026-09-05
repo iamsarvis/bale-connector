@@ -581,6 +581,9 @@ class Bale_Admin {
 						'confirmDelete'     => __( 'Delete this log entry? This cannot be undone.', 'bale-connector' ),
 						'confirmBulkDelete' => __( 'Delete the selected log entries? This cannot be undone.', 'bale-connector' ),
 						'confirmDeleteAll'  => __( 'Delete ALL log entries? This cannot be undone.', 'bale-connector' ),
+						'nothingSelected'   => __( 'Please select at least one log entry and an action.', 'bale-connector' ),
+						'showMore'          => __( 'Show more', 'bale-connector' ),
+						'hideDetails'       => __( 'Show less', 'bale-connector' ),
 					),
 				)
 			);
