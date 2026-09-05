@@ -1,5 +1,5 @@
 === Bale Connector ===
-Contributors: sobhan
+Contributors: Sobhan Askari
 Tags: bale, messenger, contact form 7, cf7, notification, iran, forms
 Requires at least: 6.0
 Tested up to: 7.1
