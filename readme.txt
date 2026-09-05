@@ -24,17 +24,9 @@ What's included in this plugin (free, unlimited):
 * Background sending — all notifications are queued through Action Scheduler, so a slow or failing Bale API call never blocks the page load for your visitors. Failed sends are retried automatically with exponential backoff (honoring Bale's retry_after when present).
 * Security first — your bot token is encrypted at rest with libsodium (never stored or shown in plaintext), every admin action is nonce-protected and capability-gated, and visitor-submitted field values are neutralized so a form submitter can never inject links or formatting into your notifications.
 
-Not included — available as separate paid add-ons:
+Not included — available as separate add-ons:
 
-The following features are not part of this plugin. They are developed and sold as separate add-ons at zhaket.com:
-
-* WooCommerce order notifications
-* OTP login (one-time password over Bale)
-* Multi-form-builder support (Elementor forms, WPForms, Gravity Forms)
-* Two-way AI chat and inbound message webhook
-* Abandoned-cart reminders
-
-This free plugin is complete on its own — nothing in it is locked, crippled, or time-limited.
+Advanced integrations are available as separate add-ons. This free plugin is complete on its own — nothing in it is locked, crippled, or time-limited.
 
 Privacy note: raw Contact Form 7 field data temporarily persists in Action Scheduler's own database tables (as queued job arguments, subject to Action Scheduler's default retention period) in addition to this plugin's delivery log.
 
@@ -66,9 +58,9 @@ Yes. Every Contact Form 7 form can have its own recipients and message template,
 
 No. Visitor-submitted field values are always rendered as plain text — the six characters that trigger Bale's formatting parser are neutralized at render time. Only your admin-authored template can use bold, italic, or links.
 
-= Where do WooCommerce order notifications, OTP login, or other features come from? =
+= Are there other features available? =
 
-Those are separate paid add-ons developed and sold at zhaket.com — they are not part of this plugin. This plugin fully covers Contact Form 7 to Bale notifications, and nothing in it requires a purchase to work.
+Advanced integrations are available as separate add-ons. This plugin itself is complete and fully functional on its own — nothing requires a purchase to work.
 
 = Is my bot token stored safely? =
 
