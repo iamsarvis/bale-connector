@@ -54,7 +54,6 @@ msgid "Template exceeds the 4096 character Bale limit."
 msgstr "قالب از سقف ۴۰۹۶ نویسهٔ بیل فراتر رفته است."
 
 #: includes/class-bale-cf7-admin-panel.php
-msgctxt "bale-connector"
 msgid ""
 "New form submission\n"
 "Form: [form-title]\n"
